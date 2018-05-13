@@ -1,45 +1,37 @@
-package runtime
+package kgruntime
 
 import (
 	"encoding/binary"
 	"io"
 )
 
-type Kaitai interface {
-	Decode(r io.ReadSeeker) error
+type KSYDecoder interface {
+	KSYDecode(io.ReadSeeker) error
 }
 
-type decoder struct {
-	byteOrder binary.ByteOrder
-	reader    io.ReadSeeker
-	err       error
+type Decoder struct {
+	ByteOrder binary.ByteOrder
+	Reader    io.ReadSeeker
+	Err       error
 }
 
-func (d *decoder) decode(i interface{}) {
-	if d.err != nil {
+func (d *Decoder) Decode(i interface{}) {
+	if d.Err != nil {
 		return
 	}
 
 	switch v := i.(type) {
-	case Kaitai:
-		d.err = v.Decode(d.reader)
+	case KSYDecoder:
+		d.Err = v.KSYDecode(d.Reader)
 	default:
-		d.err = binary.Read(d.reader, d.byteOrder, i)
+		d.Err = binary.Read(d.Reader, d.ByteOrder, i)
 	}
 }
 
-func (d *decoder) decodePos(i interface{}, pos int) {
-	if d.err != nil {
+func (d *Decoder) DecodePos(i interface{}, pos int64) {
+	if d.Err != nil {
 		return
 	}
-	_, d.err = reader.Seek(pos, io.SeekStart)
-	decode(i)
-}
-
-func (d *decoder) decodeValue(i interface{}, value string) {
-	if d.err != nil {
-		return
-	}
-	_, d.err = reader.Seek(pos, io.SeekStart)
-	decode(i)
+	_, d.Err = d.Reader.Seek(pos, io.SeekStart)
+	d.Decode(i)
 }

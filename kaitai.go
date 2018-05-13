@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -47,14 +48,21 @@ var typeMapping = map[string]string{
 	"":     "[]byte",
 }
 
-func goify(s string) string {
+func goify(s string, t string) string {
 	// Create go versions of vars
 	re := regexp.MustCompile("[a-z][a-z_]*")
 	s = re.ReplaceAllStringFunc(s, strcase.ToCamel)
 
-	re = regexp.MustCompile("_?[A-Z][a-zA-Z0-9_<>\\.]*")
+	re = regexp.MustCompile("_?[a-zA-Z0-9_\\.]+")
 	return re.ReplaceAllStringFunc(s, func(s string) string {
-		return "k." + s
+		_, err := strconv.ParseInt(s, 0, 0)
+		if err == nil {
+			return s
+		}
+		if strings.HasPrefix(s, "0") {
+			return strings.Replace(strings.ToLower(s), "0b", "0", 1)
+		}
+		return t + "(k." + s + ")"
 	})
 }
 
@@ -65,7 +73,7 @@ type Type struct {
 func (s *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(&s.Type)
 	if err != nil {
-		s.Type = "Kaitai"
+		s.Type = "kgruntime.KSYDecoder"
 		log.Printf("Type unmarshal error: %s", err)
 		return nil
 	}
@@ -96,6 +104,10 @@ func (k *Instance) String() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if dataType == "[]byte" && k.Value != ""{
+		dataType = "int64"
+	}
+
 	return "STRUCT_NAME " + dataType + doc + " //instance\n", nil
 }
 
@@ -114,15 +126,20 @@ func (k *Attribute) String() (string, error) {
 
 	dataType, err := k.Type.String()
 	if err != nil {
-		return "", err
+		return k.ID, err
 	}
 
 	if dataType == "[]byte" {
-		size, err := strconv.Atoi(k.Size)
-		if err != nil {
-			return "", err
+		if k.Size != "" {
+			_, err := strconv.ParseInt(k.Size, 0, 0)
+			if err != nil {
+				return k.ID, err
+			}
+			dataType = strings.Replace(dataType, "[]", "["+k.Size+"]", 1)
+		} else {
+
 		}
-		dataType = strings.Replace(dataType, "[]", "["+strconv.Itoa(size)+"]", 1)
+
 	}
 
 	return strcase.ToCamel(k.ID) + " " + dataType + doc + "\n", nil
@@ -152,6 +169,7 @@ func (k *Kaitai) String() (string, error) {
 	for _, attribute := range k.Seq {
 		attrStr, err := attribute.String()
 		if err != nil {
+			log.Printf("Error in %s\n", attrStr)
 			return "", err
 		}
 		if _, ok := typeMapping[attribute.Type.Type]; !ok {
@@ -177,40 +195,40 @@ func (k *Kaitai) String() (string, error) {
 	// print type end
 	s += "}\n\n"
 
-	s += "func (k *STRUCT_NAME) Decode(reader io.ReadSeeker) (err error) {\n"
+	if hasCustomTypes {
+		s += "func (k *STRUCT_NAME) KSYDecode(reader io.ReadSeeker) (err error) {\n"
 
-	if !hasCustomTypes {
-		s += "\treturn binary.Read(reader, binary.LittleEndian, k)\n"
-	} else {
-		s += "\td := decoder{reader: reader, byteOrder: binary.LittleEndian}\n"
+		s += "\td := kgruntime.Decoder{Reader: reader, ByteOrder: binary.LittleEndian}\n"
 		for _, attribute := range k.Seq {
-			s += "\td.decode(k." + strcase.ToCamel(attribute.ID) + ")\n"
+			s += "\td.Decode(k." + strcase.ToCamel(attribute.ID) + ")\n"
 		}
 
 		for name, instance := range k.Instances {
 			if instance.Pos != "" {
-				s += "\td.decodePos(k." + strcase.ToCamel(name) + ", " + goify(instance.Pos) + ")\n"
+				s += "\td.DecodePos(k." + strcase.ToCamel(name) + ", " + goify(instance.Pos, "") + ")\n"
 			}
 		}
 
 		if !hasValueInstances {
-			s += "\treturn d.err\n"
+			s += "\treturn d.Err\n"
 		} else {
 
-			s += "\tif d.err != nil {\n"
-			s += "\t\treturn d.err\n"
+			s += "\tif d.Err != nil {\n"
+			s += "\t\treturn d.Err\n"
 			s += "\t}\n"
 
 			for name, instance := range k.Instances {
 				if instance.Pos == "" {
-					s += "\tk." + strcase.ToCamel(name) + " = (" + goify(instance.Value) + ")\n"
+					s += "\tk." + strcase.ToCamel(name) + " = " + goify(instance.Value, "int64") + "\n"
 				}
 			}
 
 			s += "\treturn nil\n"
 		}
+
+		s += "}\n\n"
+
 	}
-	s += "}\n\n"
 
 	// print subtypes (flattened)
 	for name, t := range k.Types {
@@ -238,10 +256,9 @@ func (k *Kaitai) String() (string, error) {
 
 func createGofile(filepath string, pckg string) {
 
-	outdir := "test_formats"
 	filename := path.Base(filepath)
 
-	logfile, err := os.Create(path.Join(outdir, filename+".log"))
+	logfile, err := os.Create(path.Join(pckg, filename+".log"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -263,7 +280,7 @@ func createGofile(filepath string, pckg string) {
 	}
 	//
 	err = ioutil.WriteFile(
-		path.Join(outdir, filename+".generic.unmarshal"),
+		path.Join(pckg, filename+".generic.unmarshal"),
 		[]byte(fmt.Sprintf("%# v\n", pretty.Formatter(m))),
 		0644,
 	)
@@ -281,7 +298,7 @@ func createGofile(filepath string, pckg string) {
 	}
 	// fmt.Printf("%# v\n", )
 	err = ioutil.WriteFile(
-		path.Join(outdir, filename+".kaitai.unmarshal"),
+		path.Join(pckg, filename+".kaitai.unmarshal"),
 		[]byte(fmt.Sprintf("%# v\n", pretty.Formatter(kaitai))),
 		0644,
 	)
@@ -302,24 +319,25 @@ func createGofile(filepath string, pckg string) {
 	header += "\t\"io\"\n"
 	header += "\t\"os\"\n"
 	header += "\t\"log\"\n"
+	header += "\t\"kgruntime\"\n"
 	header += ")\n"
 	header += "\n"
-	main := "func main() {\n"
-	main += "\tf, err := os.Open(os.Args[1])\n"
-	main += "\tif err != nil {\n"
-	main += "\t\tlog.Fatal(err)\n"
-	main += "\t}\n"
-	main += "\tdefer f.Close()\n"
-	main += "\tbaseStruct := " + baseStruct + "{}\n"
-	main += "\tx := baseStruct.Decode(f)\n"
-	main += "\tfmt.Printf(\"%v\", x)\n"
-	main += "}\n"
+	//main := "func main() {\n"
+	//main += "\tf, err := os.Open(os.Args[1])\n"
+	//main += "\tif err != nil {\n"
+	//main += "\t\tlog.Fatal(err)\n"
+	//main += "\t}\n"
+	//main += "\tdefer f.Close()\n"
+	//main += "\tbaseStruct := " + baseStruct + "{}\n"
+	//main += "\tx := baseStruct.Decode(f)\n"
+	//main += "\tfmt.Printf(\"%v\", x)\n"
+	//main += "}\n"
 	if err != nil {
 		log.Printf("error: %v", err)
 	}
 	err = ioutil.WriteFile(
-		path.Join(outdir, filename+".go"),
-		[]byte(header+goCode+main),
+		path.Join(pckg, filename+".go"),
+		[]byte(header+goCode), //+main),
 		0644,
 	)
 	if err != nil {
@@ -329,7 +347,10 @@ func createGofile(filepath string, pckg string) {
 }
 
 func main() {
-	for _, filename := range os.Args[1:] {
-		createGofile(filename, "test_formats")
+	var outdir = flag.String("d", "out", "the species we are studying")
+	flag.Parse()
+	os.MkdirAll(*outdir, 0755)
+	for _, filename := range flag.Args() {
+		createGofile(filename, *outdir)
 	}
 }
