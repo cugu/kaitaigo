@@ -1,14 +1,15 @@
-rm -rf src
+go run kaitai.go -d kst/$1 tests/$1/formats/*
+goimports -w kst/$1
+mkdir -p src/kst/$1
+mv kst/$1/* src/kst/$1
+rm -rf kst
 
-go run kaitai.go -d test_formats $1/formats/*
-goimports -w test_formats
-
-mkdir -p src
-mv test_formats src
-cp -r runtime src
-mv src/runtime src/kgruntime
+rm -rf src/ks
+cp -rf runtime src
+mv -f src/runtime src/ks
 
 # run tests
 export GOPATH=$GOPATH:$PWD
 
-go test -v $1/test/*
+go test -v src/kst/$1/test/*
+#go test -v -bench=. -run=XXX $1/test/*

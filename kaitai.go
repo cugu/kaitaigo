@@ -17,41 +17,27 @@ import (
 )
 
 var typeMapping = map[string]string{
-	"u1":   "uint8",
-	"u2":   "uint16",
-	"u4":   "uint32",
-	"u8":   "uint64",
-	"u2le": "uint16",
-	"u2be": "uint16",
-	"u4le": "uint32",
-	"u4be": "uint32",
-	"u8le": "uint64",
-	"u8be": "uint64",
-	"s1":   "int8",
-	"s2":   "int16",
-	"s4":   "int32",
-	"s8":   "int64",
-	"s2le": "int16",
-	"s2be": "int16",
-	"s4le": "int32",
-	"s4be": "int32",
-	"s8le": "int64",
-	"s8be": "int64",
-	"f4":   "float32",
-	"f8":   "float64",
-	"f4be": "float32",
-	"f4le": "float32",
-	"f8be": "float64",
-	"f8le": "float64",
-	"str":  "string",
-	"strz": "string",
-	"":     "[]byte",
+	"u1": "uint8", "u2": "uint16", "u4": "uint32", "u8": "uint64",
+	"u2le": "uint16", "u4le": "uint32", "u8le": "uint64",
+	"u2be": "uint16", "u4be": "uint32", "u8be": "uint64",
+	"s1": "int8", "s2": "int16", "s4": "int32", "s8": "int64",
+	"s2le": "int16", "s4le": "int32", "s8le": "int64",
+	"s2be": "int16", "s4be": "int32", "s8be": "int64",
+	"f4": "float32", "f8": "float64",
+	"f4le": "float32", "f8le": "float64",
+	"f4be": "float32", "f8be": "float64",
+	"str": "string", "strz": "string",
+	"": "[]byte",
 }
 
 func goify(s string, t string) string {
 	// Create go versions of vars
+
+
 	re := regexp.MustCompile("[a-z][a-z_]*")
 	s = re.ReplaceAllStringFunc(s, strcase.ToCamel)
+
+	s = strings.Replace(s, "_", "", -1)
 
 	re = regexp.MustCompile("_?[a-zA-Z0-9_\\.]+")
 	return re.ReplaceAllStringFunc(s, func(s string) string {
@@ -73,7 +59,7 @@ type Type struct {
 func (s *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(&s.Type)
 	if err != nil {
-		s.Type = "kgruntime.KSYDecoder"
+		s.Type = "ks.KSYDecoder"
 		log.Printf("Type unmarshal error: %s", err)
 		return nil
 	}
@@ -104,18 +90,20 @@ func (k *Instance) String() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if dataType == "[]byte" && k.Value != ""{
+	if dataType == "[]byte" && k.Value != "" {
 		dataType = "int64"
 	}
 
-	return "STRUCT_NAME " + dataType + doc + " //instance\n", nil
+	return "%[1]s " + dataType + " `ks:\"%[2]s,instance\"`" + doc + "\n", nil
 }
 
 type Attribute struct {
-	ID   string `yaml:"id,omitempty"`
-	Type Type   `yaml:"type"`
-	Size string `yaml:"size,omitempty"`
-	Doc  string `yaml:"doc,omitempty"`
+	ID         string `yaml:"id,omitempty"`
+	Type       Type   `yaml:"type"`
+	Size       string `yaml:"size,omitempty"`
+	Doc        string `yaml:"doc,omitempty"`
+	Repeat     string `yaml:"repeat,omitempty"`
+	RepeatExpr string `yaml:"repeat-expr,omitempty"`
 }
 
 func (k *Attribute) String() (string, error) {
@@ -137,12 +125,17 @@ func (k *Attribute) String() (string, error) {
 			}
 			dataType = strings.Replace(dataType, "[]", "["+k.Size+"]", 1)
 		} else {
-
+			dataType = strings.Replace(dataType, "[]", "[2]", 1) // TODO
 		}
-
 	}
 
-	return strcase.ToCamel(k.ID) + " " + dataType + doc + "\n", nil
+	if k.Repeat != "" {
+		if k.RepeatExpr != "" {
+			dataType = "[" + goify(k.RepeatExpr, "") + "]" + dataType
+		}
+	}
+
+	return strcase.ToCamel(k.ID) + " " + dataType + "`ks:\"" + k.ID + ",attribute\"`" + doc + "\n", nil
 }
 
 type Kaitai struct {
@@ -162,7 +155,10 @@ func (k *Kaitai) String() (string, error) {
 	}
 
 	// print type start
-	s += "type STRUCT_NAME struct{\n"
+	s += "type %[1]s struct{\n"
+	s += "\tIo *ks.Stream\n"
+	s += "\tParent interface{} \n"
+	s += "\tRoot *%[3]s\n\n"
 
 	// print attribute
 	hasCustomTypes := false
@@ -189,30 +185,30 @@ func (k *Kaitai) String() (string, error) {
 			hasValueInstances = true
 		}
 
-		s += "\t" + strings.Replace(attrStr, "STRUCT_NAME", strcase.ToCamel(name), 1)
+		s += "\t" + fmt.Sprintf(attrStr, strcase.ToCamel(name), name)
 	}
 
 	// print type end
 	s += "}\n\n"
 
-	if hasCustomTypes {
-		s += "func (k *STRUCT_NAME) KSYDecode(reader io.ReadSeeker) (err error) {\n"
+	if hasCustomTypes && hasValueInstances {
+		s += "func (k *%[1]s) KSYDecode(d ks.Stream) (err error) {\n"
 
-		s += "\td := kgruntime.Decoder{Reader: reader, ByteOrder: binary.LittleEndian}\n"
+		// s += "\td := ks.NewDecoder(reader)\n"
 		for _, attribute := range k.Seq {
-			s += "\td.Decode(k." + strcase.ToCamel(attribute.ID) + ")\n"
+			reference := "&"
+			s += "\td.Decode(" + reference + "k." + strcase.ToCamel(attribute.ID) + ")\n"
 		}
 
 		for name, instance := range k.Instances {
 			if instance.Pos != "" {
-				s += "\td.DecodePos(k." + strcase.ToCamel(name) + ", " + goify(instance.Pos, "") + ")\n"
+				s += "\td.DecodePos(&k." + strcase.ToCamel(name) + ", " + goify(instance.Pos, "") + ")\n"
 			}
 		}
 
 		if !hasValueInstances {
 			s += "\treturn d.Err\n"
 		} else {
-
 			s += "\tif d.Err != nil {\n"
 			s += "\t\treturn d.Err\n"
 			s += "\t}\n"
@@ -222,12 +218,9 @@ func (k *Kaitai) String() (string, error) {
 					s += "\tk." + strcase.ToCamel(name) + " = " + goify(instance.Value, "int64") + "\n"
 				}
 			}
-
 			s += "\treturn nil\n"
 		}
-
 		s += "}\n\n"
-
 	}
 
 	// print subtypes (flattened)
@@ -236,7 +229,7 @@ func (k *Kaitai) String() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		s += strings.Replace(typeStr, "STRUCT_NAME", strcase.ToCamel(name), 2)
+		s += fmt.Sprintf(typeStr, strcase.ToCamel(name), name, "%[1]s")
 	}
 
 	for enum, values := range k.Enums {
@@ -306,20 +299,18 @@ func createGofile(filepath string, pckg string) {
 		log.Printf("error: %v", err)
 	}
 
-	baseStruct := strcase.ToCamel(strings.Replace(filename, ".ksy", "", 1))
+	baseStructSnake := strings.Replace(filename, ".ksy", "", 1)
+	baseStruct := strcase.ToCamel(baseStructSnake)
 
 	// write go code
 	goCode, err := kaitai.String()
-	goCode = strings.Replace(goCode, "STRUCT_NAME", baseStruct, 2)
+	goCode = fmt.Sprintf(goCode, baseStruct, baseStructSnake, baseStruct)
 	header := "package " + pckg + "\n"
 	header += "\n"
 	header += "import (\n"
-	header += "\t\"encoding/binary\"\n"
-	header += "\t\"fmt\"\n"
-	header += "\t\"io\"\n"
-	header += "\t\"os\"\n"
-	header += "\t\"log\"\n"
-	header += "\t\"kgruntime\"\n"
+	for _, pkg := range []string{"fmt", "io", "os", "log", "ks"} {
+		header += "\t\"" + pkg + "\"\n"
+	}
 	header += ")\n"
 	header += "\n"
 	//main := "func main() {\n"
