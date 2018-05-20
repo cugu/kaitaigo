@@ -7,12 +7,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"ks"
-	. "kst/mbr"
+	ks "gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestMBR(t *testing.T) {
-	f, err := os.Open("../../mbr/bin/mbr_fat16.dd")
+	f, err := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
 	defer f.Close()
 
 	if err != nil {
@@ -38,7 +37,7 @@ func TestMBR(t *testing.T) {
 
 func BenchmarkMBR(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		f, _ := os.Open("../../mbr/bin/mbr_fat16.dd")
+		f, _ := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
 		d := ks.NewDecoder(f)
 		var r Mbr
 		d.Decode(&r)

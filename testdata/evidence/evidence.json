@@ -1,0 +1,22 @@
+[
+  {"path": "container/Computer forensics - Wikipedia.7z", "mime": "application/x-7z-compressed", "generator": "7-Zip 18.01"},
+  {"path": "container/Computer forensics - Wikipedia.pdf.gz", "mime": "application/x-gzip", "generator": "7-Zip 18.01"},
+  {"path": "container/Computer forensics - Wikipedia.tar", "mime": "application/x-tar", "generator": "7-Zip 18.01"},
+  {"path": "container/Computer forensics - Wikipedia.zip", "mime": "application/zip", "generator": "Windows 10 Explorer"},
+  {"path": "document/Computer forensics - Wikipedia.pdf", "mime": "application/pdf", "generator": "Chrome 65.0"},
+  {"path": "document/Design_of_the_FAT_file_system.xlsx", "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "generator": "Excel 16"},
+  {"path": "document/Digital forensics.docx", "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "generator": "Word 16"},
+  {"path": "document/Digital forensics.txt", "mime": "plain/text", "generator": "Editor"},
+  {"path": "document/NTFS.pptx", "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation", "generator": "PowerPoint 16"},
+  {"path": "filesystem/content.zip", "mime": "application/octet-stream", "generator": "macOS Disk Utility 17.0"},
+  {"path": "filesystem/exfat.dd", "mime": "application/octet-stream", "generator": "macOS Disk Utility 17.0"},
+  {"path": "filesystem/fat16.dd", "mime": "application/octet-stream", "generator": "macOS Disk Utility 17.0"},
+  {"path": "filesystem/gpt_apfs.dd", "mime": "application/octet-stream", "generator": "macOS Disk Utility 17.0"},
+  {"path": "filesystem/hfs+.dd", "mime": "application/octet-stream", "generator": "macOS Disk Utility 17.0"},
+  {"path": "filesystem/mbr_fat16.dd", "mime": "application/octet-stream", "generator": "Windows Disk Management 10.0.16299.248"},
+  {"path": "filesystem/mbr_ntfs.dd", "mime": "application/octet-stream", "generator": "Windows Disk Management 10.0.16299.248"},
+  {"path": "filesystem/mbr_fat32.vhd.gz", "mime": "application/octet-stream", "generator": "Windows Disk Management 10.0.16299.248"},
+  {"path": "image/alps.jpg", "mime": "image/jpeg", "generator": "macOS Preview 10.0"},
+  {"path": "image/alps.png", "mime": "image/png", "generator": "macOS Preview 10.0"},
+  {"path": "image/alps.tiff", "mime": "image/tiff", "generator": "macOS Preview 10.0"}
+]

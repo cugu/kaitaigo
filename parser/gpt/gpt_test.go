@@ -1,4 +1,4 @@
-package spec
+package gpt
 
 import (
 	"os"
@@ -7,12 +7,11 @@ import (
 
 	//"github.com/stretchr/testify/assert"
 
-	"ks"
-	. "kst/gpt"
+	ks "gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestGPT(t *testing.T) {
-	f, err := os.Open("../../gpt/bin/gpt_apfs.dd")
+	f, err := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
 	defer f.Close()
 
 	if err != nil {
@@ -38,7 +37,7 @@ func TestGPT(t *testing.T) {
 
 func BenchmarkGPT(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		f, _ := os.Open("../../gpt/bin/gpt_apfs.dd")
+		f, _ := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
 		d := ks.NewDecoder(f)
 		var r Gpt
 		r.Io = d

@@ -3,16 +3,21 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/iancoleman/strcase"
 	"github.com/kr/pretty"
+	"github.com/pkg/errors"
+	"golang.org/x/tools/imports"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -32,7 +37,6 @@ var typeMapping = map[string]string{
 
 func goify(s string, t string) string {
 	// Create go versions of vars
-
 
 	re := regexp.MustCompile("[a-z][a-z_]*")
 	s = re.ReplaceAllStringFunc(s, strcase.ToCamel)
@@ -59,7 +63,7 @@ type Type struct {
 func (s *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(&s.Type)
 	if err != nil {
-		s.Type = "ks.KSYDecoder"
+		s.Type = "runtime.KSYDecoder"
 		log.Printf("Type unmarshal error: %s", err)
 		return nil
 	}
@@ -156,7 +160,7 @@ func (k *Kaitai) String() (string, error) {
 
 	// print type start
 	s += "type %[1]s struct{\n"
-	s += "\tIo *ks.Stream\n"
+	s += "\tIo *runtime.Stream\n"
 	s += "\tParent interface{} \n"
 	s += "\tRoot *%[3]s\n\n"
 
@@ -192,9 +196,9 @@ func (k *Kaitai) String() (string, error) {
 	s += "}\n\n"
 
 	if hasCustomTypes && hasValueInstances {
-		s += "func (k *%[1]s) KSYDecode(d ks.Stream) (err error) {\n"
+		s += "func (k *%[1]s) KSYDecode(d runtime.Stream) (err error) {\n"
 
-		// s += "\td := ks.NewDecoder(reader)\n"
+		// s += "\td := runtime.NewDecoder(reader)\n"
 		for _, attribute := range k.Seq {
 			reference := "&"
 			s += "\td.Decode(" + reference + "k." + strcase.ToCamel(attribute.ID) + ")\n"
@@ -247,103 +251,106 @@ func (k *Kaitai) String() (string, error) {
 	return s, nil
 }
 
-func createGofile(filepath string, pckg string) {
+func YAMLUnmarshal(name string, source []byte, m interface{}, path string) error {
+	err := yaml.Unmarshal(source, m)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(
+		path+"."+name+".unmarshal",
+		[]byte(fmt.Sprintf("%s%# v\n", "// file generated at "+time.Now().UTC().Format(time.RFC3339)+"\n", pretty.Formatter(m))),
+		0644,
+	)
+}
 
+func createGofile(filepath string, pckg string) error {
 	filename := path.Base(filepath)
-
-	logfile, err := os.Create(path.Join(pckg, filename+".log"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer logfile.Close()
-	log.SetOutput(logfile)
-
-	source, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// print all
-
-	m := make(map[interface{}]interface{})
-
-	err = yaml.Unmarshal([]byte(source), &m)
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
-	//
-	err = ioutil.WriteFile(
-		path.Join(pckg, filename+".generic.unmarshal"),
-		[]byte(fmt.Sprintf("%# v\n", pretty.Formatter(m))),
-		0644,
-	)
-	if err != nil {
-		log.Printf("error: %v", err)
-	}
-
-	// parse kaitai
-
-	kaitai := Kaitai{}
-
-	err = yaml.UnmarshalStrict([]byte(source), &kaitai)
-	if err != nil {
-		log.Printf("error: %v", err)
-	}
-	// fmt.Printf("%# v\n", )
-	err = ioutil.WriteFile(
-		path.Join(pckg, filename+".kaitai.unmarshal"),
-		[]byte(fmt.Sprintf("%# v\n", pretty.Formatter(kaitai))),
-		0644,
-	)
-	if err != nil {
-		log.Printf("error: %v", err)
-	}
-
 	baseStructSnake := strings.Replace(filename, ".ksy", "", 1)
 	baseStruct := strcase.ToCamel(baseStructSnake)
 
+	// setup logging
+	logfile, err := os.Create(path.Join(pckg, filename+".log"))
+	if err != nil {
+		return errors.Wrap(err, "create logfile")
+	}
+	defer func() {
+		logfile.Sync()
+		logfile.Close()
+	}()
+
+	log.SetOutput(io.MultiWriter(os.Stderr, logfile))
+
+	log.Println("generate", filepath)
+
+	// read source
+	source, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return errors.Wrap(err, "read source")
+	}
+
+	// parse generic
+	m := make(map[interface{}]interface{})
+	err = YAMLUnmarshal("generic", source, &m, path.Join(pckg, filename))
+	if err != nil {
+		return errors.Wrap(err, "parse generic yaml")
+	}
+
+	// parse kaitai
+	kaitai := Kaitai{}
+	err = YAMLUnmarshal("kaitai", source, &kaitai, path.Join(pckg, filename))
+	if err != nil {
+		return errors.Wrap(err, "parse kaitai yaml")
+	}
+
 	// write go code
 	goCode, err := kaitai.String()
+	if err != nil {
+		return errors.Wrap(err, "kaitai code gen")
+	}
 	goCode = fmt.Sprintf(goCode, baseStruct, baseStructSnake, baseStruct)
 	parts := strings.Split(pckg, "/")
 	lastpart := parts[len(parts)-1]
-	header := "package " + lastpart + "\n"
-	header += "\n"
+	header := "// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n"
+	header += "package " + lastpart + "\n"
 	header += "import (\n"
-	for _, pkg := range []string{"fmt", "io", "os", "log", "ks"} {
-		header += "\t\"" + pkg + "\"\n"
+	for _, pkg := range []string{"fmt", "io", "os", "log", "gitlab.com/cugu/kaitai.go/runtime"} {
+		header += "\"" + pkg + "\"\n"
 	}
 	header += ")\n"
-	header += "\n"
-	//main := "func main() {\n"
-	//main += "\tf, err := os.Open(os.Args[1])\n"
-	//main += "\tif err != nil {\n"
-	//main += "\t\tlog.Fatal(err)\n"
-	//main += "\t}\n"
-	//main += "\tdefer f.Close()\n"
-	//main += "\tbaseStruct := " + baseStruct + "{}\n"
-	//main += "\tx := baseStruct.Decode(f)\n"
-	//main += "\tfmt.Printf(\"%v\", x)\n"
-	//main += "}\n"
+
+	formated, err := imports.Process("", []byte(header+goCode), nil)
 	if err != nil {
-		log.Printf("error: %v", err)
+		log.Print("Format error", err)
+		formated = []byte(header + goCode)
 	}
-	err = ioutil.WriteFile(
-		path.Join(pckg, filename+".go"),
-		[]byte(header+goCode), //+main),
-		0644,
-	)
+	err = ioutil.WriteFile(path.Join(pckg, filename+".go"), formated, 0644)
 	if err != nil {
-		log.Printf("error: %v", err)
+		return errors.Wrap(err, "create go file")
 	}
+	return nil
 
 }
 
+func printErrors(filename string) {
+	err := createGofile(filename, filepath.Dir(filename))
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func main() {
-	var outdir = flag.String("d", "out", "the species we are studying")
 	flag.Parse()
-	os.MkdirAll(*outdir, 0755)
 	for _, filename := range flag.Args() {
-		createGofile(filename, *outdir)
+		if strings.HasSuffix(filename, ".ksy") {
+			printErrors(filename)
+		} else if strings.HasSuffix(filename, "/...") {
+			recPath := strings.Replace(filename, "/...", "", 1)
+			filepath.Walk(recPath, func(path string, f os.FileInfo, err error) error {
+				if strings.HasSuffix(path, ".ksy") {
+					printErrors(path)
+				}
+				return nil
+			})
+		}
 	}
 }
