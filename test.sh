@@ -11,5 +11,5 @@ mv -f src/runtime src/ks
 # run tests
 export GOPATH=$GOPATH:$PWD
 
-go test -v src/kst/$1/test/*
+go test -v tests/$1/test/*
 #go test -v -bench=. -run=XXX $1/test/*
