@@ -20,9 +20,7 @@ func TestMBR(t *testing.T) {
 
 	d := ks.NewDecoder(f)
 	r := Mbr{}
-	r.Io = d
-	r.Parent = &r
-	r.Root = &r
+	r.Init(d, nil, nil)
 	d.Decode(&r)
 	if d.Err != nil {
 		t.Fatal(d.Err)

@@ -20,9 +20,7 @@ func TestGPT(t *testing.T) {
 
 	d := ks.NewDecoder(f)
 	var r Gpt
-	r.Io = d
-	r.Parent = &r
-	r.Root = &r
+	r.Init(d, &r, &r)
 	d.Decode(&r)
 	if d.Err != nil {
 		t.Fatal(d.Err)
@@ -40,9 +38,7 @@ func BenchmarkGPT(b *testing.B) {
 		f, _ := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
 		d := ks.NewDecoder(f)
 		var r Gpt
-		r.Io = d
-		r.Parent = &r
-		r.Root = &r
+		r.Init(d, &r, &r)
 		d.Decode(&r)
 		f.Close()
 	}

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -33,27 +32,6 @@ var typeMapping = map[string]string{
 	"f4be": "float32", "f8be": "float64",
 	"str": "string", "strz": "string",
 	"": "[]byte",
-}
-
-func goify(s string, t string) string {
-	// Create go versions of vars
-
-	re := regexp.MustCompile("[a-z][a-z_]*")
-	s = re.ReplaceAllStringFunc(s, strcase.ToCamel)
-
-	s = strings.Replace(s, "_", "", -1)
-
-	re = regexp.MustCompile("_?[a-zA-Z0-9_\\.]+")
-	return re.ReplaceAllStringFunc(s, func(s string) string {
-		_, err := strconv.ParseInt(s, 0, 0)
-		if err == nil {
-			return s
-		}
-		if strings.HasPrefix(s, "0") {
-			return strings.Replace(strings.ToLower(s), "0b", "0", 1)
-		}
-		return t + "(k." + s + ")"
-	})
 }
 
 type Type struct {
@@ -84,12 +62,7 @@ type Instance struct {
 	Doc   string `yaml:"doc,omitempty"`
 }
 
-func (k *Instance) String() (string, error) {
-	doc := ""
-	if k.Doc != "" {
-		doc = " // " + k.Doc
-	}
-
+func (k *Instance) dataType() (string, error) {
 	dataType, err := k.Type.String()
 	if err != nil {
 		return "", err
@@ -97,7 +70,19 @@ func (k *Instance) String() (string, error) {
 	if dataType == "[]byte" && k.Value != "" {
 		dataType = "int64"
 	}
+	return dataType, nil
+}
 
+func (k *Instance) String() (string, error) {
+	doc := ""
+	if k.Doc != "" {
+		doc = " // " + k.Doc
+	}
+
+	dataType, err := k.dataType()
+	if err != nil {
+		return "", err
+	}
 	return "%[1]s " + dataType + " `ks:\"%[2]s,instance\"`" + doc + "\n", nil
 }
 
@@ -135,7 +120,7 @@ func (k *Attribute) String() (string, error) {
 
 	if k.Repeat != "" {
 		if k.RepeatExpr != "" {
-			dataType = "[" + goify(k.RepeatExpr, "") + "]" + dataType
+			dataType = "[" + goify(k.RepeatExpr) + "]" + dataType
 		}
 	}
 
@@ -160,9 +145,10 @@ func (k *Kaitai) String() (string, error) {
 
 	// print type start
 	s += "type %[1]s struct{\n"
-	s += "\tIo *runtime.Stream\n"
-	s += "\tParent interface{} \n"
-	s += "\tRoot *%[3]s\n\n"
+	s += "\truntime.KaitaiHeader\n"
+	// s += "\tIo *runtime.Stream\n"
+	// s += "\tParent interface{} \n"
+	// s += "\tRoot *%[3]s\n\n"
 
 	// print attribute
 	hasCustomTypes := false
@@ -206,7 +192,7 @@ func (k *Kaitai) String() (string, error) {
 
 		for name, instance := range k.Instances {
 			if instance.Pos != "" {
-				s += "\td.DecodePos(&k." + strcase.ToCamel(name) + ", " + goify(instance.Pos, "") + ")\n"
+				s += "\td.DecodePos(&k." + strcase.ToCamel(name) + ", " + goify(instance.Pos) + ")\n"
 			}
 		}
 
@@ -219,7 +205,11 @@ func (k *Kaitai) String() (string, error) {
 
 			for name, instance := range k.Instances {
 				if instance.Pos == "" {
-					s += "\tk." + strcase.ToCamel(name) + " = " + goify(instance.Value, "int64") + "\n"
+					dataType, err := instance.dataType()
+					if err != nil {
+						return "", err
+					}
+					s += "\tk." + strcase.ToCamel(name) + " = " + dataType + "(" + goify(instance.Value) + ")\n"
 				}
 			}
 			s += "\treturn nil\n"
