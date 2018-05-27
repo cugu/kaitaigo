@@ -30,36 +30,51 @@ var typeMapping = map[string]string{
 	"f4": "float32", "f8": "float64",
 	"f4le": "float32", "f8le": "float64",
 	"f4be": "float32", "f8be": "float64",
-	"str": "string", "strz": "string",
+	"str": "[]byte", "strz": "[]byte",
 	"": "[]byte",
 }
 
+type TypeSwitch struct {
+	SwitchOn string            `yaml:"switch-on,omitempty"`
+	Cases    map[string]string `yaml:"cases,omitempty"`
+}
+
 type Type struct {
-	Type string
+	Type       string
+	TypeSwitch TypeSwitch
 }
 
 func (s *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(&s.Type)
 	if err != nil {
-		s.Type = "runtime.KSYDecoder"
-		log.Printf("Type unmarshal error: %s", err)
-		return nil
+		err = unmarshal(&s.TypeSwitch)
+		return err
 	}
 	return nil
 }
 
 func (t *Type) String() (string, error) {
-	if val, ok := typeMapping[t.Type]; ok {
-		return val, nil
+	if t.Type != "" {
+		if val, ok := typeMapping[t.Type]; ok {
+			return val, nil
+		}
+
+		return strcase.ToCamel(t.Type), nil
 	}
-	return strcase.ToCamel(t.Type), nil
+	if t.TypeSwitch.SwitchOn != "" {
+		return "interface{}", nil
+	}
+	return "[]byte", nil
 }
 
 type Instance struct {
-	Value string `yaml:"value,omitempty"`
-	Pos   string `yaml:"pos,omitempty"`
-	Type  Type   `yaml:"type,omitempty"`
-	Doc   string `yaml:"doc,omitempty"`
+	Value      string `yaml:"value,omitempty"`
+	Pos        string `yaml:"pos,omitempty"`
+	Whence     string `yaml:"whence,omitempty"`
+	Type       Type   `yaml:"type,omitempty"`
+	Repeat     string `yaml:"repeat,omitempty"`
+	RepeatExpr string `yaml:"repeat-expr,omitempty"`
+	Doc        string `yaml:"doc,omitempty"`
 }
 
 func (k *Instance) dataType() (string, error) {
@@ -70,6 +85,17 @@ func (k *Instance) dataType() (string, error) {
 	if dataType == "[]byte" && k.Value != "" {
 		dataType = "int64"
 	}
+
+	if k.Repeat != "" {
+		if k.RepeatExpr != "" {
+			if isInt(k.RepeatExpr) {
+				dataType = "[" + goify(k.RepeatExpr, "") + "]" + dataType
+			} else {
+				dataType = "[]" + dataType
+			}
+		}
+	}
+
 	return dataType, nil
 }
 
@@ -83,16 +109,73 @@ func (k *Instance) String() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	return "%[1]s " + dataType + " `ks:\"%[2]s,instance\"`" + doc + "\n", nil
 }
 
+type Contents struct {
+	Content []interface{}
+}
+
+func (s *Contents) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return unmarshal(&s.Content)
+}
+
+func (k *Contents) Len() int {
+	if len(k.Content) == 0 {
+		return 0
+	}
+	switch v := k.Content[0].(type) {
+	case string:
+		return len(v)
+	default:
+		return len(k.Content)
+	}
+
+}
+
 type Attribute struct {
-	ID         string `yaml:"id,omitempty"`
-	Type       Type   `yaml:"type"`
-	Size       string `yaml:"size,omitempty"`
-	Doc        string `yaml:"doc,omitempty"`
-	Repeat     string `yaml:"repeat,omitempty"`
-	RepeatExpr string `yaml:"repeat-expr,omitempty"`
+	ID         string   `yaml:"id,omitempty"`
+	Type       Type     `yaml:"type"`
+	Size       string   `yaml:"size,omitempty"`
+	Doc        string   `yaml:"doc,omitempty"`
+	Repeat     string   `yaml:"repeat,omitempty"`
+	RepeatExpr string   `yaml:"repeat-expr,omitempty"`
+	Contents   Contents `yaml:"contents,omitempty"`
+}
+
+func (k *Attribute) dataType() (string, error) {
+	dataType, err := k.Type.String()
+	if err != nil {
+		return k.ID, err
+	}
+
+	if dataType == "[]byte" { // || dataType == "string" {
+		if k.Size != "" {
+			_, err := strconv.ParseInt(k.Size, 0, 0)
+			if err != nil {
+				return dataType, nil
+			}
+			size := strings.Replace(k.Size, "%", "%%", -1)
+			dataType = strings.Replace(dataType, "[]", "["+goify(size, "")+"]", 1)
+		} else {
+			if k.Contents.Len() != 0 {
+				dataType = strings.Replace(dataType, "[]", fmt.Sprintf("[%d]", k.Contents.Len()), 1)
+			}
+		}
+	}
+
+	if k.Repeat != "" {
+		if k.RepeatExpr != "" {
+			if isInt(k.RepeatExpr) {
+				dataType = "[" + goify(k.RepeatExpr, "") + "]" + dataType
+			} else {
+				dataType = "[]" + dataType
+			}
+		}
+	}
+
+	return dataType, nil
 }
 
 func (k *Attribute) String() (string, error) {
@@ -101,31 +184,15 @@ func (k *Attribute) String() (string, error) {
 		doc = " // " + k.Doc
 	}
 
-	dataType, err := k.Type.String()
+	dataType, err := k.dataType()
 	if err != nil {
-		return k.ID, err
-	}
-
-	if dataType == "[]byte" {
-		if k.Size != "" {
-			_, err := strconv.ParseInt(k.Size, 0, 0)
-			if err != nil {
-				return k.ID, err
-			}
-			dataType = strings.Replace(dataType, "[]", "["+k.Size+"]", 1)
-		} else {
-			dataType = strings.Replace(dataType, "[]", "[2]", 1) // TODO
-		}
-	}
-
-	if k.Repeat != "" {
-		if k.RepeatExpr != "" {
-			dataType = "[" + goify(k.RepeatExpr) + "]" + dataType
-		}
+		return "", err
 	}
 
 	return strcase.ToCamel(k.ID) + " " + dataType + "`ks:\"" + k.ID + ",attribute\"`" + doc + "\n", nil
 }
+
+var allTypes map[string]Kaitai
 
 type Kaitai struct {
 	Types     map[string]Kaitai         `yaml:"types,omitempty"`
@@ -135,7 +202,30 @@ type Kaitai struct {
 	Instances map[string]Instance       `yaml:"instances,omitempty"`
 }
 
-func (k *Kaitai) String() (string, error) {
+func (k *Kaitai) getParent(sname string) string {
+	for ksName, ks := range allTypes {
+		for _, attribute := range ks.Seq {
+			if attribute.Type.Type == sname { // TODO: add TypeSwitch support
+				return strcase.ToCamel(ksName)
+			}
+		}
+		for _, instance := range ks.Instances {
+			if instance.Type.Type == sname { // TODO: add TypeSwitch support
+				return strcase.ToCamel(ksName)
+			}
+		}
+	}
+	return "interface{}"
+}
+
+func (k *Kaitai) setupMap(sname string) {
+	allTypes[sname] = *k
+	for name, t := range k.Types {
+		t.setupMap(name)
+	}
+}
+
+func (k *Kaitai) String(sname string, parent string, root string) (string, error) {
 	s := ""
 
 	// print doc string
@@ -144,92 +234,96 @@ func (k *Kaitai) String() (string, error) {
 	}
 
 	// print type start
-	s += "type %[1]s struct{\n"
-	s += "\truntime.KaitaiHeader\n"
-	// s += "\tIo *runtime.Stream\n"
-	// s += "\tParent interface{} \n"
-	// s += "\tRoot *%[3]s\n\n"
+	s += "type " + sname + " struct{\n"
+	s += "\tDec *runtime.Decoder \n"
+	s += "\tStart int64 \n"
+	s += "\tParent *" + parent + "\n"
+	s += "\tRoot *" + root + "\n\n"
 
 	// print attribute
-	hasCustomTypes := false
 	for _, attribute := range k.Seq {
 		attrStr, err := attribute.String()
 		if err != nil {
 			log.Printf("Error in %s\n", attrStr)
 			return "", err
 		}
-		if _, ok := typeMapping[attribute.Type.Type]; !ok {
-			hasCustomTypes = true
-		}
 		s += "\t" + attrStr
 	}
 
-	hasValueInstances := false
 	for name, instance := range k.Instances {
-		hasCustomTypes = true
 		attrStr, err := instance.String()
 		if err != nil {
 			return "", err
 		}
-		if instance.Value != "" {
-			hasValueInstances = true
-		}
-
 		s += "\t" + fmt.Sprintf(attrStr, strcase.ToCamel(name), name)
 	}
 
 	// print type end
 	s += "}\n\n"
 
-	if hasCustomTypes && hasValueInstances {
-		s += "func (k *%[1]s) KSYDecode(d runtime.Stream) (err error) {\n"
-
-		// s += "\td := runtime.NewDecoder(reader)\n"
-		for _, attribute := range k.Seq {
-			reference := "&"
-			s += "\td.Decode(" + reference + "k." + strcase.ToCamel(attribute.ID) + ")\n"
+	// create getter
+	for _, attribute := range k.Seq {
+		dataType, err := attribute.dataType()
+		if err != nil {
+			return "", err
 		}
-
-		for name, instance := range k.Instances {
-			if instance.Pos != "" {
-				s += "\td.DecodePos(&k." + strcase.ToCamel(name) + ", " + goify(instance.Pos) + ")\n"
-			}
+		s += "func (k *" + sname + ") Get" + strcase.ToCamel(attribute.ID) + "() (" + dataType + ") {\n"
+		s += "\treturn k." + strcase.ToCamel(attribute.ID)
+		s += "}\n\n"
+	}
+	for name, instance := range k.Instances {
+		dataType, err := instance.dataType()
+		if err != nil {
+			return "", err
 		}
+		s += "func (k *" + sname + ") Get" + strcase.ToCamel(name) + "() (" + dataType + ") {\n"
 
-		if !hasValueInstances {
-			s += "\treturn d.Err\n"
+		s += "\tif runtime.IsNull(k." + strcase.ToCamel(name) + "){\n"
+		if instance.Pos == "" {
+			s += "\t\tk." + strcase.ToCamel(name) + "=" + dataType + "(" + goify(instance.Value, "") + ")\n"
 		} else {
-			s += "\tif d.Err != nil {\n"
-			s += "\t\treturn d.Err\n"
-			s += "\t}\n"
-
-			for name, instance := range k.Instances {
-				if instance.Pos == "" {
-					dataType, err := instance.dataType()
-					if err != nil {
-						return "", err
-					}
-					s += "\tk." + strcase.ToCamel(name) + " = " + dataType + "(" + goify(instance.Value) + ")\n"
-				}
+			s += "\t\t_, k.Dec.Err = k.Dec.Seek(k.Start, io.SeekStart)\n"
+			whence := "io.SeekCurrent"
+			switch instance.Whence {
+			case "seek_set":
+				whence = "io.SeekStart"
+			case "seek_end":
+				whence = "io.SeekEnd"
 			}
-			s += "\treturn nil\n"
+
+			repeat := (instance.Repeat != "" && instance.RepeatExpr != "")
+			if repeat {
+				dataType, err := instance.dataType()
+				if err != nil {
+					return "", err
+				}
+				s += "\t\tk." + strcase.ToCamel(name) + " = make(" + dataType + ", " + goify(instance.RepeatExpr, "") + ")\n"
+				s += "\t\tfor i := 0; i < " + goify(instance.RepeatExpr, "int") + "; i++ {\n"
+				s += "\t\tk.Dec.DecodePos(&k." + strcase.ToCamel(name) + "[i], " + goify(instance.Pos, "int64") + ", " + whence + ", k, k.Root)\n"
+				s += "\t\t}\n"
+			} else {
+				s += "\t\tk.Dec.DecodePos(&k." + strcase.ToCamel(name) + ", " + goify(instance.Pos, "int64") + ", " + whence + ", k, k.Root)\n"
+			}
+
 		}
+		s += "\t}\n"
+		s += "\treturn k." + strcase.ToCamel(name)
 		s += "}\n\n"
 	}
 
 	// print subtypes (flattened)
 	for name, t := range k.Types {
-		typeStr, err := t.String()
+		typeStr, err := t.String(strcase.ToCamel(name), k.getParent(name), root)
 		if err != nil {
 			return "", err
 		}
-		s += fmt.Sprintf(typeStr, strcase.ToCamel(name), name, "%[1]s")
+		s += typeStr
 	}
 
 	for enum, values := range k.Enums {
 		s += "var " + strcase.ToCamel(enum) + " = struct {\n"
 		for _, value := range values {
-			s += "\t" + strcase.ToCamel(value) + " int\n"
+			s += "\t" + strcase.ToCamel(value) + " int64\n"
 		}
 		s += "}{\n"
 		for x, value := range values {
@@ -292,12 +386,14 @@ func createGofile(filepath string, pckg string) error {
 		return errors.Wrap(err, "parse kaitai yaml")
 	}
 
+	allTypes = map[string]Kaitai{}
+	kaitai.setupMap(baseStruct)
+
 	// write go code
-	goCode, err := kaitai.String()
+	goCode, err := kaitai.String(baseStruct, baseStruct, baseStruct)
 	if err != nil {
 		return errors.Wrap(err, "kaitai code gen")
 	}
-	goCode = fmt.Sprintf(goCode, baseStruct, baseStructSnake, baseStruct)
 	parts := strings.Split(pckg, "/")
 	lastpart := parts[len(parts)-1]
 	header := "// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n"

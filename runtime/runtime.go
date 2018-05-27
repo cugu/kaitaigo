@@ -10,91 +10,23 @@ import (
 	"fmt"
 )
 
-type KaitaiHeader struct {
-	_io     *Stream
-	_parent interface{}
-	_root   interface{}
+func IsNull(value interface{}) bool {
+	return reflect.DeepEqual(reflect.Zero(reflect.TypeOf(value)).Interface(), value)
 }
 
-func (k *KaitaiHeader) Init(io *Stream, parent interface{}, root interface{}) {
-	k._io = io
-	k._parent = parent
-	k._root = root
-}
-
-func (k *KaitaiHeader) IO() *Stream {
-	return k._io
-}
-
-func (k *KaitaiHeader) Parent() interface{} {
-	return k._parent
-}
-
-func (k *KaitaiHeader) Root() interface{} {
-	return k._root
-}
-
-func (k *KaitaiHeader) SetIO(value *Stream) {
-	k._io = value
-}
-
-func (k *KaitaiHeader) SetParent(value interface{}) {
-	k._parent = value
-}
-
-func (k *KaitaiHeader) SetRoot(value interface{}) {
-	k._root = value
-}
-
-func NewDecoder(reader io.ReadSeeker) *Stream {
-	s := &Stream{reader: reader, ByteOrder: binary.LittleEndian}
-	s.Pos, _ = s.reader.Seek(0, io.SeekCurrent)
-	s.Size, _ = s.GetSize()
-	return s
-}
-
-type Stream struct {
-	reader io.ReadSeeker
+type Decoder struct {
+	io.ReadSeeker
 	ByteOrder binary.ByteOrder
-	Size int64
-	Pos int64
 	Err       error
 }
 
-
-func (k *Stream) Seek(offset int64, whence int) (n int64, err error) {
-	n, err = k.reader.Seek(offset, whence)
-	k.Pos = n
-	k.Size, _ = k.GetSize()
-	return
-}
-
-func (k *Stream) Read(data []byte) (n int, err error) {
-	n, err = k.reader.Read(data)
-	k.Pos, _ = k.reader.Seek(0, io.SeekCurrent)
-	k.Size, _ = k.GetSize()
-	return
-}
-
-func (k *Stream) GetSize() (int64, error) {
-	// Go has no internal ReadSeeker function to get current ReadSeeker size,
-	// thus we use the following trick.
-	// Remember our current position
-	curPos := k.Pos
-	// Seek to the end of the File object
-	_, err := k.reader.Seek(0, io.SeekEnd)
-	if err != nil {
-		return 0, err
-	}
-	// Remember position, which is equal to the full length
-	fullSize := k.Pos
-	// Seek back to the current position
-	_, err = k.reader.Seek(curPos, io.SeekStart)
-	return fullSize, err
+func NewDecoder(reader io.ReadSeeker) *Decoder {
+	s := &Decoder{reader, binary.LittleEndian, nil}
+	return s
 }
 
 type KSYDecoder interface {
-	KSYDecode(*Stream) error
+	KSYDecode(*Decoder) error
 }
 
 // decAlloc takes a value and returns a settable value that can
@@ -111,33 +43,37 @@ func decAlloc(v reflect.Value) reflect.Value {
 	return v
 }
 
-func dbg(s string, v reflect.Value) {
-
+func (dec *Decoder) Decode(element interface{}) (value reflect.Value) {
+	return dec.DecodeAncestors(element, reflect.Value{}, reflect.Value{})
 }
 
-func (dec *Stream) Decode(element interface{}) (value reflect.Value) {
+func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, root reflect.Value) (value reflect.Value) {
+	// skip if previous errors
 	if dec.Err != nil {
 		return
 	}
 
+	// check if pointer
 	pointer := reflect.ValueOf(element)
 	if pointer.Type().Kind() != reflect.Ptr {
 		dec.Err = errors.New("attempt to decode into a non-pointer")
 		return
 	}
 
+	// get stored value
 	value = decAlloc(pointer)
 
-
+	// run KSYDecode if exists
 	decoderType := reflect.TypeOf((*KSYDecoder)(nil)).Elem()
 	if pointer.Type().Implements(decoderType) {
 		dec.Err = element.(KSYDecoder).KSYDecode(dec)
 		return value
 	}
 
-
+	// check if value can be set
 	if !value.CanSet() {
-		panic("Value cannot be set!!" + value.String())
+		dec.Err = errors.New("Value cannot be set!!" + value.String())
+		return
 	}
 
 	switch value.Kind() {
@@ -148,16 +84,39 @@ func (dec *Stream) Decode(element interface{}) (value reflect.Value) {
 			reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
 			// array of builtin types
-			dec.Err = binary.Read(dec.reader, dec.ByteOrder, element)
+			dec.Err = binary.Read(dec, dec.ByteOrder, element)
 		default:
 			// other array
 			for i := 0; i < value.Len(); i++ {
-				item := dec.Decode(value.Index(i).Addr().Interface())
+				item := dec.DecodeAncestors(value.Index(i).Addr().Interface(), parent, root)
 				value.Index(i).Set(item)
 			}
 		}
 	case reflect.Struct:
 		// struct
+
+		// set dec, parent and root
+		decField := value.FieldByName("Dec")
+		decField.Set(reflect.ValueOf(dec))
+		startField := value.FieldByName("Start")
+		pos, _ := dec.Seek(0, io.SeekCurrent)
+		startField.Set(reflect.ValueOf(pos))
+		parentField := value.FieldByName("Parent")
+		if !parent.IsValid() {
+			parent = pointer
+		}
+		if parentField.IsNil() {
+			parentField.Set(parent)
+		}
+		rootField := value.FieldByName("Root")
+		if !root.IsValid() {
+			root = pointer
+		}
+		if rootField.IsNil() {
+			rootField.Set(root)
+		}
+
+
 		for i := 0; i < value.NumField(); i++ {
 			attribute := false
 			field := value.Field(i)
@@ -170,7 +129,8 @@ func (dec *Stream) Decode(element interface{}) (value reflect.Value) {
 						attribute = true
 					case "instance":
 					default:
-						dec.Err = errors.New(fmt.Sprintf("Unsupported flag %q in tag %q of type %s", flag, tag, value))
+						unsupportedError := fmt.Sprintf("Unsupported flag %q in tag %q of type %s", flag, tag, value)
+						dec.Err = errors.New(unsupportedError)
 						return
 					}
 				}
@@ -178,17 +138,18 @@ func (dec *Stream) Decode(element interface{}) (value reflect.Value) {
 			}
 
 			if attribute {
-				substruct := dec.Decode(field.Addr().Interface())
-				value.Field(i).Set(substruct)
+				substruct := dec.DecodeAncestors(field.Addr().Interface(), value.Addr(), root)
+				field.Set(substruct)
 			}
 
 		}
+		// value = value.Addr()
 	case reflect.Bool,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
 		// builtin types
-		dec.Err = binary.Read(dec.reader, dec.ByteOrder, element)
+		dec.Err = binary.Read(dec, dec.ByteOrder, element)
 	default:
 		log.Printf("Type unknown %+v\n", value)
 	}
@@ -196,23 +157,11 @@ func (dec *Stream) Decode(element interface{}) (value reflect.Value) {
 	return
 }
 
-/*
-func SimpleDecode() {
-	switch v := i.(type) {
-	case KSYDecoder:
-		log.Println("kaitai type")
-		d.Err = v.KSYDecode(d.Reader)
-	case float32, float64, int16, int32, int64, int8, string, uint16, uint32, uint64, uint8:
-		log.Println("builtin type")
-		d.Err = binary.Read(d.Reader, d.ByteOrder, i)
-	default:
-}
-*/
-func (d *Stream) DecodePos(element interface{}, pos int64) {
+func (d *Decoder) DecodePos(element interface{}, offset int64, whence int, parent interface{}, root interface{}) {
 	if d.Err != nil {
 		return
 	}
-	_, d.Err = d.reader.Seek(pos, io.SeekStart)
-	d.Decode(element)
+	_, d.Err = d.Seek(offset, whence)
+	d.DecodeAncestors(element, reflect.ValueOf(parent), reflect.ValueOf(root))
 }
 

@@ -3,7 +3,6 @@ package mbr
 import (
 	"os"
 	"testing"
-	"log"
 
 	"github.com/stretchr/testify/assert"
 
@@ -11,34 +10,32 @@ import (
 )
 
 func TestMBR(t *testing.T) {
-	f, err := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
-	defer f.Close()
+	file, err := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
+	defer file.Close()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	d := ks.NewDecoder(f)
-	r := Mbr{}
-	r.Init(d, nil, nil)
-	d.Decode(&r)
-	if d.Err != nil {
-		t.Fatal(d.Err)
+	dec := ks.NewDecoder(file)
+	mbr := Mbr{}
+	dec.Decode(&mbr)
+	if dec.Err != nil {
+		t.Fatal(dec.Err)
 	}
-	log.Printf("%#v\n", r)
 
-	assert.EqualValues(t, 128, r.Partitions[0].LbaStart)
-	assert.EqualValues(t, 34816, r.Partitions[0].NumSectors)
-	assert.EqualValues(t, 14, r.Partitions[0].PartitionType)
+	p0 := mbr.GetPartitions()[0]
+	assert.EqualValues(t, 128, p0.GetLbaStart())
+	assert.EqualValues(t, 34816, p0.GetNumSectors())
+	assert.EqualValues(t, 14, p0.GetPartitionType())
 }
-
 
 func BenchmarkMBR(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		f, _ := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
-		d := ks.NewDecoder(f)
-		var r Mbr
-		d.Decode(&r)
-		f.Close()
+		file, _ := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
+		dec := ks.NewDecoder(file)
+		mbr := Mbr{}
+		dec.Decode(&mbr)
+		file.Close()
 	}
 }

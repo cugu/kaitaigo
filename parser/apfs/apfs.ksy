@@ -578,7 +578,7 @@ types:
         enum: tree_type
       - id: unknown_0
         size: 8
-      - id: root
+      - id: tree_root
         type: ref_obj
 
 # checkpoint (type: 0x0c)

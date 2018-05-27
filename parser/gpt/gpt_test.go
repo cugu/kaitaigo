@@ -1,45 +1,50 @@
 package gpt
 
 import (
+	"encoding/binary"
 	"os"
+	"strings"
 	"testing"
-	"log"
+	"unicode/utf16"
 
-	//"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 
 	ks "gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestGPT(t *testing.T) {
-	f, err := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
-	defer f.Close()
+	file, err := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
+	defer file.Close()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	d := ks.NewDecoder(f)
-	var r Gpt
-	r.Init(d, &r, &r)
-	d.Decode(&r)
-	if d.Err != nil {
-		t.Fatal(d.Err)
+	dec := ks.NewDecoder(file)
+	gpt := Gpt{}
+	dec.Decode(&gpt)
+	if dec.Err != nil {
+		t.Fatal(dec.Err)
 	}
-	log.Printf("%#v\n", r)
 
-	/*assert.EqualValues(t, 128, r.Primary.LbaStart)
-	assert.EqualValues(t, 34816, r.Partitions[0].NumSectors)
-	assert.EqualValues(t, 14, r.Partitions[0].PartitionType)*/
+	primary := gpt.GetPrimary()
+	assert.EqualValues(t, [8]uint8{0x45, 0x46, 0x49, 0x20, 0x50, 0x41, 0x52, 0x54}, primary.GetSignature())
+	partitions := primary.GetEntries()[0]
+	name := partitions.GetName()
+	u16 := []uint16{}
+	for i := 0; i < len(name); i += 2 {
+		u16 = append(u16, binary.LittleEndian.Uint16(name[i:i+2]))
+	}
+	assert.EqualValues(t, "disk image", strings.Trim(string(utf16.Decode(u16)), "\x00"))
+	assert.EqualValues(t, 40, partitions.GetFirstLba())
 }
-
 
 func BenchmarkGPT(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		f, _ := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
-		d := ks.NewDecoder(f)
-		var r Gpt
-		r.Init(d, &r, &r)
-		d.Decode(&r)
-		f.Close()
+		file, _ := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
+		dec := ks.NewDecoder(file)
+		gpt := Gpt{}
+		dec.Decode(&gpt)
+		file.Close()
 	}
 }

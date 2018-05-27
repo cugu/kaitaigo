@@ -9,12 +9,12 @@ instances:
     value: 0x200
     # Default is 0x200 for 512 byte sectors, set to 0x1000 to parse 4096 byte sectors.
   primary:
-    io: _root._io
     pos: _root.sector_size
+    whence: seek_set
     type: partition_header
   backup:
-    io: _root._io
-    pos: _io.size - _root.sector_size
+    pos: -_root.sector_size
+    whence: seek_set
     type: partition_header
 types:
   partition_entry:
@@ -67,8 +67,8 @@ types:
       # It would be pointless to process a data structure that must be zeroed.
     instances:
       entries:
-        io: _root._io
         pos: entries_start * _root.sector_size
+        whence: seek_set
         size: entries_size
         type: partition_entry
         repeat: expr
