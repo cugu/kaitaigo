@@ -85,6 +85,9 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 			reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
 			// array of builtin types
 			dec.Err = binary.Read(dec, dec.ByteOrder, element)
+			if dec.Err != nil {
+				return
+			}
 		default:
 			// other array
 			for i := 0; i < value.Len(); i++ {
@@ -99,7 +102,11 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 		decField := value.FieldByName("Dec")
 		decField.Set(reflect.ValueOf(dec))
 		startField := value.FieldByName("Start")
-		pos, _ := dec.Seek(0, io.SeekCurrent)
+		pos, err := dec.Seek(0, io.SeekCurrent)
+		if err != nil {
+			dec.Err = err
+			return
+		}
 		startField.Set(reflect.ValueOf(pos))
 		parentField := value.FieldByName("Parent")
 		if !parent.IsValid() {
@@ -134,7 +141,6 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 						return
 					}
 				}
-				tag = fields[0]
 			}
 
 			if attribute {
@@ -157,11 +163,11 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 	return
 }
 
-func (d *Decoder) DecodePos(element interface{}, offset int64, whence int, parent interface{}, root interface{}) {
-	if d.Err != nil {
+func (dec *Decoder) DecodePos(element interface{}, offset int64, whence int, parent interface{}, root interface{}) {
+	if dec.Err != nil {
 		return
 	}
-	_, d.Err = d.Seek(offset, whence)
-	d.DecodeAncestors(element, reflect.ValueOf(parent), reflect.ValueOf(root))
+	_, dec.Err = dec.Seek(offset, whence)
+	dec.DecodeAncestors(element, reflect.ValueOf(parent), reflect.ValueOf(root))
 }
 
