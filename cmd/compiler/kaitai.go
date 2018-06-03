@@ -21,23 +21,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-var typeMapping = map[string]string{
-	"u1": "uint8", "u2": "uint16", "u4": "uint32", "u8": "uint64",
-	"u2le": "uint16", "u4le": "uint32", "u8le": "uint64",
-	"u2be": "uint16", "u4be": "uint32", "u8be": "uint64",
-	"s1": "int8", "s2": "int16", "s4": "int32", "s8": "int64",
-	"s2le": "int16", "s4le": "int32", "s8le": "int64",
-	"s2be": "int16", "s4be": "int32", "s8be": "int64",
-	"f4": "float32", "f8": "float64",
-	"f4le": "float32", "f8le": "float64",
-	"f4be": "float32", "f8be": "float64",
-	"str": "[]byte", "strz": "[]byte",
-	"": "[]byte",
-}
-
 type TypeSwitch struct {
-	SwitchOn string            `yaml:"switch-on,omitempty"`
-	Cases    map[string]string `yaml:"cases,omitempty"`
+	SwitchOn string          `yaml:"switch-on,omitempty"`
+	Cases    map[string]Type `yaml:"cases,omitempty"`
 }
 
 type Type struct {
@@ -151,16 +137,22 @@ type Kaitai struct {
 }
 
 func (k *Kaitai) getParent(typeName string) string {
+	result := map[string]bool{}
 	for ktypeName, ks := range allTypes {
 		for _, attribute := range ks.Seq {
 			if attribute.Type.Type == typeName { // TODO: add TypeSwitch support
-				return strcase.ToCamel(ktypeName)
+				result[strcase.ToCamel(ktypeName)] = true
 			}
 		}
 		for _, instance := range ks.Instances {
 			if instance.Type.Type == typeName { // TODO: add TypeSwitch support
-				return strcase.ToCamel(ktypeName)
+				result[strcase.ToCamel(ktypeName)] = true
 			}
+		}
+	}
+	if len(result) == 1 {
+		for k, _ := range result {
+			return k
 		}
 	}
 	return "interface{}"
@@ -216,8 +208,29 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	for _, attribute := range k.Seq {
 		aName := strcase.ToCamel(attribute.ID)
 		dataType := attribute.dataType()
-		buffer.WriteLine("func (k *" + typeName + ") Get" + aName + "() (" + dataType + ") {")
-		buffer.WriteLine("return k." + aName)
+
+		ptr := ""
+		if 0x41 <= dataType[0] && dataType[0] <= 0x5A {
+			ptr = "*"
+		}
+
+		buffer.WriteLine("func (k *" + typeName + ") Get" + aName + "() (" + ptr + dataType + ") {")
+
+		if dataType == "interface{}" {
+			buffer.WriteLine("switch " + goify(attribute.Type.TypeSwitch.SwitchOn, "int64") + " {")
+			for casevalue, casetype := range attribute.Type.TypeSwitch.Cases {
+				buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
+				buffer.WriteLine("so := " + casetype.String() + "{}")
+				buffer.WriteLine("k.Dec.DecodeAncestors2(&so, k, k.Root)")
+				buffer.WriteLine("k." + aName + " = so")
+			}
+			buffer.WriteLine("}")
+		}
+
+		if 0x41 <= dataType[0] && dataType[0] <= 0x5A {
+			ptr = "&"
+		}
+		buffer.WriteLine("return " + ptr + "k." + aName)
 		buffer.WriteLine("}")
 	}
 	for name, instance := range k.Instances {

@@ -12,6 +12,20 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+var typeMapping = map[string]string{
+	"u1": "uint8", "u2": "uint16", "u4": "uint32", "u8": "uint64",
+	"u2le": "uint16", "u4le": "uint32", "u8le": "uint64",
+	"u2be": "uint16", "u4be": "uint32", "u8be": "uint64",
+	"s1": "int8", "s2": "int16", "s4": "int32", "s8": "int64",
+	"s2le": "int16", "s4le": "int32", "s8le": "int64",
+	"s2be": "int16", "s4be": "int32", "s8be": "int64",
+	"f4": "float32", "f8": "float64",
+	"f4le": "float32", "f8le": "float64",
+	"f4be": "float32", "f8be": "float64",
+	"str": "[]byte", "strz": "[]byte",
+	"": "[]byte",
+}
+
 func bitString(s string) string {
 	num, err := strconv.ParseInt(s[2:], 2, 64)
 	if err != nil {
@@ -22,6 +36,15 @@ func bitString(s string) string {
 
 func isInt(expr string) bool {
 	return !strings.Contains(goify(expr, ""), "k.")
+}
+
+func goenum(s string, cast string) string {
+	parts := strings.SplitN(s, "::", 2)
+	s = strcase.ToCamel(parts[0]) + "." + strcase.ToCamel(parts[1])
+	if cast != "" {
+		return cast + "(" + s + ")"
+	}
+	return s
 }
 
 func goify(expr string, casttype string) string {

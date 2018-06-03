@@ -28,21 +28,21 @@ types:
 
 # block navigation
 
-  ref_obj:
-    doc: |
-      Universal type to address a block: it both parses one u8-sized
-      block address and provides a lazy instance to parse that block
-      right away.
-    seq:
-      - id: val
-        type: u8
-    instances:
-      target:
-        io: _root._io
-        pos: val * _root.block_size
-        type: obj
-        size: _root.block_size
-    -webide-representation: 'Blk {val:dec}'
+#   u8 # ref_obj:
+#     doc: |
+#       Universal type to address a block: it both parses one u8-sized
+#       block address and provides a lazy instance to parse that block
+#       right away.
+#     seq:
+#       - id: val
+#         type: u8
+#     instances:
+#       target:
+#         io: _root._io
+#         pos: val * _root.block_size
+#         type: obj
+#         size: _root.block_size
+#     -webide-representation: 'Blk {val:dec}'
 
 # meta structs
 
@@ -135,7 +135,7 @@ types:
       - id: spaceman_oid
         type: u8
       - id: omap_oid
-        type: ref_obj
+        type: u8 # ref_obj
       - id: reaper_oid
         type: u8
       - id: pad2
@@ -267,13 +267,13 @@ types:
       - id: xid
         type: u8
       - id: obj_id
-        type: ref_obj
+        type: u8 # ref_obj
     -webide-representation: '{obj_id} v{xid:dec}'
 
   lookup_key:
     seq:
       - id: offset
-        type: ref_obj
+        type: u8 # ref_obj
     -webide-representation: '{obj_id}'
 
   drec_key:
@@ -325,7 +325,7 @@ types:
       - id: block_length
         type: u4
       - id: obj_id
-        type: ref_obj
+        type: u8 # ref_obj
     -webide-representation: '{obj_id}, from {block_start:dec}, len {block_length:dec}'
 
   inode_val: # 0x30
@@ -463,7 +463,7 @@ types:
       - id: len
         type: u8
       - id: phys_block_num
-        type: ref_obj
+        type: u8 # ref_obj
       - id: flags
         type: u8
     -webide-representation: '{phys_block_num}, Len {len:dec}, {flags:dec}'
@@ -579,7 +579,7 @@ types:
       - id: unknown_0
         size: 8
       - id: tree_root
-        type: ref_obj
+        type: u8 # ref_obj
 
 # checkpoint (type: 0x0c)
 
@@ -615,7 +615,7 @@ types:
       - id: oid
         type: u8
       - id: object
-        type: ref_obj
+        type: u8 # ref_obj
 
 # volume_superblock (type: 0x0d)
 
@@ -642,15 +642,15 @@ types:
       - id: unknown_92
         size: 32 # root_tree_type, extentref_tree_type, snap_meta_tree_type
       - id: omap_oid
-        type: ref_obj
+        type: u8 # ref_obj
         doc: 'Maps node IDs to the inode Btree nodes'
       - id: root_tree_oid
         type: u8
       - id: extentref_tree_oid
-        type: ref_obj
+        type: u8 # ref_obj
         doc: 'Maps file extents to inodes'
       - id: snap_meta_tree_oid
-        type: ref_obj
+        type: u8 # ref_obj
       - id: unknown_160
         size: 16 # revert_to_xid, total_blocks_freed?
       - id: next_doc_id # next_obj_id?

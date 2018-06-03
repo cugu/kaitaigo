@@ -47,6 +47,13 @@ func (dec *Decoder) Decode(element interface{}) (value reflect.Value) {
 	return dec.DecodeAncestors(element, reflect.Value{}, reflect.Value{})
 }
 
+func (dec *Decoder) DecodeAncestors2(element interface{}, parent interface{}, root interface{}) {
+	if dec.Err != nil {
+		return
+	}
+	dec.DecodeAncestors(element, reflect.ValueOf(parent), reflect.ValueOf(root))
+}
+
 func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, root reflect.Value) (value reflect.Value) {
 	// skip if previous errors
 	if dec.Err != nil {
@@ -113,14 +120,24 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 			parent = pointer
 		}
 		if parentField.IsNil() {
-			parentField.Set(parent)
+			if(parentField.Type().Elem().Kind() == reflect.Interface) {
+				parentField.Set(reflect.New(parentField.Type().Elem()))
+				parentField.Elem().Set(parent)
+			} else {
+				parentField.Set(parent)
+			}
 		}
 		rootField := value.FieldByName("Root")
 		if !root.IsValid() {
 			root = pointer
 		}
 		if rootField.IsNil() {
-			rootField.Set(root)
+			if(rootField.Type().Elem().Kind() == reflect.Interface) {
+				rootField.Set(reflect.New(rootField.Type().Elem()))
+				rootField.Elem().Set(parent)
+			}else{
+				rootField.Set(root)
+			}
 		}
 
 
@@ -143,7 +160,10 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 				}
 			}
 
-			if attribute {
+			// getter := parent.MethodByName("Get" + field.Name)
+
+			// log.Println(value.Type().Field(i).Name, decAlloc(field).Kind())
+			if attribute && decAlloc(field).Kind() != reflect.Interface {
 				substruct := dec.DecodeAncestors(field.Addr().Interface(), value.Addr(), root)
 				field.Set(substruct)
 			}
@@ -156,8 +176,12 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 		reflect.Float32, reflect.Float64, reflect.Complex64, reflect.Complex128:
 		// builtin types
 		dec.Err = binary.Read(dec, dec.ByteOrder, element)
+	case reflect.Interface:
+
+		log.Println("Interface", element)
+
 	default:
-		log.Printf("Type unknown %+v\n", value)
+		log.Printf("Type %s unknown %+v\n", value.Kind(), value)
 	}
 
 	return
