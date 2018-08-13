@@ -7,6 +7,7 @@ clean:
 install:
 	@printf '\n\nInstall\n'
 	goimports -w cmd
+	goimports -w runtime
 	go install gitlab.com/cugu/kaitai.go/cmd/...
 
 code:

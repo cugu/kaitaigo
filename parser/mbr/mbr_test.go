@@ -19,15 +19,16 @@ func TestMBR(t *testing.T) {
 
 	dec := ks.NewDecoder(file)
 	mbr := Mbr{}
-	dec.Decode(&mbr)
+	mbr.Decode(dec)
 	if dec.Err != nil {
 		t.Fatal(dec.Err)
 	}
 
-	p0 := mbr.GetPartitions()[0]
-	assert.EqualValues(t, 128, p0.GetLbaStart())
-	assert.EqualValues(t, 34816, p0.GetNumSectors())
-	assert.EqualValues(t, 14, p0.GetPartitionType())
+
+	p0 := mbr.Partitions()[0]
+	assert.EqualValues(t, 128, p0.LbaStart())
+	assert.EqualValues(t, 34816, p0.NumSectors())
+	assert.EqualValues(t, 14, p0.PartitionType())
 }
 
 func BenchmarkMBR(b *testing.B) {
@@ -35,7 +36,7 @@ func BenchmarkMBR(b *testing.B) {
 		file, _ := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
 		dec := ks.NewDecoder(file)
 		mbr := Mbr{}
-		dec.Decode(&mbr)
+		mbr.Decode(dec)
 		file.Close()
 	}
 }

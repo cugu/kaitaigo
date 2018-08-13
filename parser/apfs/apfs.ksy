@@ -57,7 +57,7 @@ types:
       - id: xid
         type: u8
         doc: Incrementing version number of the xid of the obj (highest == latest)
-      - id: type
+      - id: obj_type
         type: u2
         enum: obj_type
       - id: flags
@@ -76,7 +76,7 @@ types:
       - id: body
         #size-eos: true
         type:
-          switch-on: hdr.type
+          switch-on: hdr.obj_type
           cases:
             obj_type::container_superblock: container_superblock
             obj_type::rootnode: node
@@ -86,7 +86,7 @@ types:
             obj_type::btree: btree
             obj_type::checkpoint: checkpoint
             obj_type::volume_superblock: volume_superblock
-    -webide-representation: '{hdr.type}'
+    -webide-representation: '{hdr.obj_type}'
 
 
 # container_superblock (type: 0x01)
@@ -378,7 +378,7 @@ types:
         repeat-expr: xf_num_exts
         size: xf_header[_index].length + ((8 - xf_header[_index].length) % 8)
         type:
-          switch-on: xf_header[_index].type
+          switch-on: xf_header[_index].xf_type
           cases:
             xfield_type::name: xf_name
             xfield_type::size: xf_size
@@ -421,7 +421,7 @@ types:
 
   xf_header:
     seq:
-      - id: type
+      - id: xf_type
         enum: xfield_type
         type: u2
       - id: length
@@ -596,7 +596,7 @@ types:
 
   checkpoint_entry:
     seq:
-      - id: type
+      - id: cp_type
         type: u2
         enum: obj_type
       - id: flags

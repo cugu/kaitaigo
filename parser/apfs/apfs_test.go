@@ -25,27 +25,27 @@ func TestAPFS(t *testing.T) {
 
     dec := ks.NewDecoder(filesystem)
     apfs := Apfs{}
-    dec.Decode(&apfs)
+    apfs.Decode(dec)
     if dec.Err != nil {
         t.Fatal(dec.Err)
     }
 
-    p0 := apfs.GetBlock0()
-    body := p0.GetBody()
-    containerSuperblock := body.(ContainerSuperblock)
+    p0 := apfs.Block0()
+    body := p0.Body()
+    containerSuperblock := body.(*ContainerSuperblock)
     // log.Printf("containerSuperblock: %#v", containerSuperblock)
-    blocksize := containerSuperblock.GetBlockSize()
+    blocksize := containerSuperblock.BlockSize()
     assert.EqualValues(t, 4096, blocksize)
 
-    assert.EqualValues(t, 0x949, containerSuperblock.GetOmapOid())
-    filesystem.Seek(int64(containerSuperblock.GetOmapOid()) * int64(blocksize), io.SeekStart)
-    omap := Btree{Root: &apfs}
-    dec.Decode(&omap)
+    assert.EqualValues(t, 0x949, containerSuperblock.OmapOid())
+    filesystem.Seek(int64(containerSuperblock.OmapOid()) * int64(blocksize), io.SeekStart)
+    omap := Btree{}
+    omap.DecodeAncestors(dec, &apfs, &apfs)
     log.Printf("omap: %#v", omap)
 
-    filesystem.Seek(int64(omap.GetTreeRoot()) * int64(blocksize), io.SeekStart)
+    filesystem.Seek(int64(omap.TreeRoot()) * int64(blocksize), io.SeekStart)
     omapnode := Node{Root: &apfs}
-    dec.Decode(&omapnode)
+    omapnode.DecodeAncestors(dec, &apfs, &apfs)
     log.Printf("omapnode: %#v", omapnode)
 
 
@@ -56,7 +56,7 @@ func BenchmarkAPFS(b *testing.B) {
         file, _ := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
         dec := ks.NewDecoder(file)
         apfs := Apfs{}
-        dec.Decode(&apfs)
+        apfs.Decode(dec)
         file.Close()
     }
 }

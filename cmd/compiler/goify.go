@@ -12,6 +12,20 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+var nativeTypes = map[string]bool{
+	"uint8":   true,
+	"uint16":  true,
+	"uint32":  true,
+	"uint64":  true,
+	"int8":    true,
+	"int16":   true,
+	"int32":   true,
+	"int64":   true,
+	"float32": true,
+	"float64": true,
+	"[]byte":  true,
+}
+
 var typeMapping = map[string]string{
 	"u1": "uint8", "u2": "uint16", "u4": "uint32", "u8": "uint64",
 	"u2le": "uint16", "u4le": "uint32", "u8le": "uint64",
@@ -86,9 +100,9 @@ func goify(expr string, casttype string) string {
 			case "as":
 				cast = true
 			default:
-				if !cast {
+				/*if !cast {
 					ret += "Get"
-				}
+				}*/
 				ret += strcase.ToCamel(s.TokenText())
 				// if io {
 				if !cast {
