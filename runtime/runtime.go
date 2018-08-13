@@ -6,8 +6,8 @@ import (
 	"io"
 	"log"
 	"reflect"
-	"strings"
-	"fmt"
+	//"strings"
+	//"fmt"
 )
 
 func IsNull(value interface{}) bool {
@@ -26,6 +26,9 @@ func NewDecoder(reader io.ReadSeeker) *Decoder {
 }
 
 type KSYDecoder interface {
+	SetRoot(interface{})
+	SetParent(interface{})
+	SetDec(*Decoder)
 	KSYDecode(*Decoder) error
 }
 
@@ -44,21 +47,17 @@ func decAlloc(v reflect.Value) reflect.Value {
 }
 
 func (dec *Decoder) Decode(element interface{}) (value reflect.Value) {
-	return dec.DecodeAncestors(element, reflect.Value{}, reflect.Value{})
+	return dec.DecodeAncestors(element, element, element)
 }
 
-func (dec *Decoder) DecodeAncestors2(element interface{}, parent interface{}, root interface{}) {
-	if dec.Err != nil {
-		return
-	}
-	dec.DecodeAncestors(element, reflect.ValueOf(parent), reflect.ValueOf(root))
-}
-
-func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, root reflect.Value) (value reflect.Value) {
+func (dec *Decoder) DecodeAncestors(element interface{}, parentI interface{}, rootI interface{}) (value reflect.Value) {
 	// skip if previous errors
 	if dec.Err != nil {
 		return
 	}
+
+	parent := reflect.ValueOf(parentI)
+	root := reflect.ValueOf(rootI)
 
 	// check if pointer
 	pointer := reflect.ValueOf(element)
@@ -73,7 +72,13 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 	// run KSYDecode if exists
 	decoderType := reflect.TypeOf((*KSYDecoder)(nil)).Elem()
 	if pointer.Type().Implements(decoderType) {
-		dec.Err = element.(KSYDecoder).KSYDecode(dec)
+		decodeStruct := element.(KSYDecoder)
+		decodeStruct.SetDec(dec)
+		dec.Err = decodeStruct.KSYDecode(dec)
+
+		decodeStruct.SetRoot(root.Interface())
+		decodeStruct.SetParent(parent.Interface())
+
 		return value
 	}
 
@@ -98,10 +103,11 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 		default:
 			// other array
 			for i := 0; i < value.Len(); i++ {
-				item := dec.DecodeAncestors(value.Index(i).Addr().Interface(), parent, root)
+				item := dec.DecodeAncestors(value.Index(i).Addr().Interface(), parentI, rootI)
 				value.Index(i).Set(item)
 			}
 		}
+	/*
 	case reflect.Struct:
 		// struct
 
@@ -170,6 +176,7 @@ func (dec *Decoder) DecodeAncestors(element interface{}, parent reflect.Value, r
 
 		}
 		// value = value.Addr()
+	*/
 	case reflect.Bool,
 		reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -192,6 +199,6 @@ func (dec *Decoder) DecodePos(element interface{}, offset int64, whence int, par
 		return
 	}
 	_, dec.Err = dec.Seek(offset, whence)
-	dec.DecodeAncestors(element, reflect.ValueOf(parent), reflect.ValueOf(root))
+	dec.DecodeAncestors(element, parent, root)
 }
 

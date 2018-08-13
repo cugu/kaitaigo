@@ -28,7 +28,7 @@ types:
 
 # block navigation
 
-#   u8 # ref_obj:
+#    ref_obj:
 #     doc: |
 #       Universal type to address a block: it both parses one u8-sized
 #       block address and provides a lazy instance to parse that block

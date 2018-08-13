@@ -204,6 +204,62 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	// print type end
 	buffer.WriteLine("}")
 
+	buffer.WriteLine("func (k *" + typeName + ") SetDec(dec *runtime.Decoder) {")
+	buffer.WriteLine("k.Dec = dec")
+	buffer.WriteLine("}")
+
+	buffer.WriteLine("func (k *" + typeName + ") SetRoot(root interface{}) {")
+	buffer.WriteLine("k.Root = root.(*" + root + ")")
+	buffer.WriteLine("}")
+
+	buffer.WriteLine("func (k *" + typeName + ") SetParent(parent interface{}) {")
+	buffer.WriteLine("k.Parent = parent.(*" + parent + ")")
+	buffer.WriteLine("}")
+
+	buffer.WriteLine("func (k *" + typeName + ") KSYDecode(dec *runtime.Decoder) (err error) {")
+	// buffer.WriteLine("fmt.Println(\"Root\", k.Root)")
+	// buffer.WriteLine("fmt.Println(\"Parent\", k.Parent)")
+
+	// buffer.WriteLine("\td := runtime.NewDecoder(reader)")
+	for _, attribute := range k.Seq {
+		reference := "&"
+		buffer.WriteLine("dec.DecodeAncestors(" + reference + "k." + strcase.ToCamel(attribute.ID) + ", k, k.Root)")
+	}
+
+	hasValueInstances := false
+	/*
+		for name, instance := range k.Instances {
+			if instance.Pos != "" {
+				hasValueInstances = true
+				whence := "io.SeekCurrent"
+				switch instance.Whence {
+				case "seek_set":
+					whence = "io.SeekStart"
+				case "seek_end":
+					whence = "io.SeekEnd"
+				}
+				buffer.WriteLine("dec.DecodePos(&k." + strcase.ToCamel(name) + ", " + goify(instance.Pos, "int64") + ", " + whence + ", k, k.Root)")
+			}
+		}
+	*/
+
+	if !hasValueInstances {
+		buffer.WriteLine("return dec.Err")
+	} else {
+		buffer.WriteLine("if dec.Err != nil {")
+		buffer.WriteLine("return dec.Err")
+		buffer.WriteLine("}")
+
+		for name, instance := range k.Instances {
+			if instance.Pos == "" {
+				dataType := instance.dataType()
+				buffer.WriteLine("k." + strcase.ToCamel(name) + " = " + dataType + "(" + goify(instance.Value, "int64") + ")")
+			}
+		}
+		buffer.WriteLine("return nil")
+	}
+	buffer.WriteLine("}")
+
 	// create getter
 	for _, attribute := range k.Seq {
 		aName := strcase.ToCamel(attribute.ID)
@@ -221,7 +277,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 			for casevalue, casetype := range attribute.Type.TypeSwitch.Cases {
 				buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
 				buffer.WriteLine("so := " + casetype.String() + "{}")
-				buffer.WriteLine("k.Dec.DecodeAncestors2(&so, k, k.Root)")
+				buffer.WriteLine("k.Dec.DecodeAncestors(&so, k, k.Root)")
 				buffer.WriteLine("k." + aName + " = so")
 			}
 			buffer.WriteLine("}")

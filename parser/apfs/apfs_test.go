@@ -31,10 +31,24 @@ func TestAPFS(t *testing.T) {
     }
 
     p0 := apfs.GetBlock0()
-    log.Printf("Block0: %#v", p0.Body)
     body := p0.GetBody()
     containerSuperblock := body.(ContainerSuperblock)
-    assert.EqualValues(t, 4096, containerSuperblock.GetBlockSize())
+    // log.Printf("containerSuperblock: %#v", containerSuperblock)
+    blocksize := containerSuperblock.GetBlockSize()
+    assert.EqualValues(t, 4096, blocksize)
+
+    assert.EqualValues(t, 0x949, containerSuperblock.GetOmapOid())
+    filesystem.Seek(int64(containerSuperblock.GetOmapOid()) * int64(blocksize), io.SeekStart)
+    omap := Btree{Root: &apfs}
+    dec.Decode(&omap)
+    log.Printf("omap: %#v", omap)
+
+    filesystem.Seek(int64(omap.GetTreeRoot()) * int64(blocksize), io.SeekStart)
+    omapnode := Node{Root: &apfs}
+    dec.Decode(&omapnode)
+    log.Printf("omapnode: %#v", omapnode)
+
+
 }
 
 func BenchmarkAPFS(b *testing.B) {
