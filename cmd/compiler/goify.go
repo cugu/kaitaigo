@@ -12,32 +12,18 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-var nativeTypes = map[string]bool{
-	"uint8":   true,
-	"uint16":  true,
-	"uint32":  true,
-	"uint64":  true,
-	"int8":    true,
-	"int16":   true,
-	"int32":   true,
-	"int64":   true,
-	"float32": true,
-	"float64": true,
-	"[]byte":  true,
-}
-
 var typeMapping = map[string]string{
-	"u1": "uint8", "u2": "uint16", "u4": "uint32", "u8": "uint64",
-	"u2le": "uint16", "u4le": "uint32", "u8le": "uint64",
-	"u2be": "uint16", "u4be": "uint32", "u8be": "uint64",
-	"s1": "int8", "s2": "int16", "s4": "int32", "s8": "int64",
-	"s2le": "int16", "s4le": "int32", "s8le": "int64",
-	"s2be": "int16", "s4be": "int32", "s8be": "int64",
-	"f4": "float32", "f8": "float64",
-	"f4le": "float32", "f8le": "float64",
-	"f4be": "float32", "f8be": "float64",
-	"str": "[]byte", "strz": "[]byte",
-	"": "[]byte",
+	"u1": "runtime.Uint8", "u2": "runtime.Uint16", "u4": "runtime.Uint32", "u8": "runtime.Uint64",
+	"u2le": "runtime.Uint16", "u4le": "runtime.Uint32", "u8le": "runtime.Uint64",
+	"u2be": "runtime.Uint16", "u4be": "runtime.Uint32", "u8be": "runtime.Uint64",
+	"s1": "runtime.Int8", "s2": "runtime.Int16", "s4": "runtime.Int32", "s8": "runtime.Int64",
+	"s2le": "runtime.Int16", "s4le": "runtime.Int32", "s8le": "runtime.Int64",
+	"s2be": "runtime.Int16", "s4be": "runtime.Int32", "s8be": "runtime.Int64",
+	"f4": "runtime.Float32", "f8": "runtime.Float64",
+	"f4le": "runtime.Float32", "f8le": "runtime.Float64",
+	"f4be": "runtime.Float32", "f8be": "runtime.Float64",
+	"str": "runtime.Bytes", "strz": "runtime.Bytes",
+	"": "runtime.Bytes",
 }
 
 func bitString(s string) string {

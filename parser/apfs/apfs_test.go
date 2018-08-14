@@ -7,8 +7,6 @@ import (
     "log"
 
     "github.com/stretchr/testify/assert"
-
-    ks "gitlab.com/cugu/kaitai.go/runtime"
 )
 
 
@@ -23,11 +21,10 @@ func TestAPFS(t *testing.T) {
 
     filesystem := io.NewSectionReader(file, 40 * 512, 39024 * 512)
 
-    dec := ks.NewDecoder(filesystem)
     apfs := Apfs{}
-    apfs.Decode(dec)
-    if dec.Err != nil {
-        t.Fatal(dec.Err)
+    err = apfs.Decode(filesystem)
+    if err != nil {
+        t.Fatal(err)
     }
 
     p0 := apfs.Block0()
@@ -40,12 +37,12 @@ func TestAPFS(t *testing.T) {
     assert.EqualValues(t, 0x949, containerSuperblock.OmapOid())
     filesystem.Seek(int64(containerSuperblock.OmapOid()) * int64(blocksize), io.SeekStart)
     omap := Btree{}
-    omap.DecodeAncestors(dec, &apfs, &apfs)
+    omap.DecodeAncestors(apfs.Dec, &apfs, &apfs)
     log.Printf("omap: %#v", omap)
 
     filesystem.Seek(int64(omap.TreeRoot()) * int64(blocksize), io.SeekStart)
-    omapnode := Node{Root: &apfs}
-    omapnode.DecodeAncestors(dec, &apfs, &apfs)
+    omapnode := Node{}
+    omapnode.DecodeAncestors(apfs.Dec, &apfs, &apfs)
     log.Printf("omapnode: %#v", omapnode)
 
 
@@ -54,9 +51,11 @@ func TestAPFS(t *testing.T) {
 func BenchmarkAPFS(b *testing.B) {
     for n := 0; n < b.N; n++ {
         file, _ := os.Open("../../testdata/evidence/filesystem/gpt_apfs.dd")
-        dec := ks.NewDecoder(file)
         apfs := Apfs{}
-        apfs.Decode(dec)
+        err := apfs.Decode(file)
+        if err != nil {
+            b.Fatal(err)
+        }
         file.Close()
     }
 }

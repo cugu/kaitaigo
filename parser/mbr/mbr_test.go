@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	ks "gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestMBR(t *testing.T) {
@@ -17,13 +15,11 @@ func TestMBR(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dec := ks.NewDecoder(file)
 	mbr := Mbr{}
-	mbr.Decode(dec)
-	if dec.Err != nil {
-		t.Fatal(dec.Err)
+	err = mbr.Decode(file)
+	if err != nil {
+		t.Fatal(err)
 	}
-
 
 	p0 := mbr.Partitions()[0]
 	assert.EqualValues(t, 128, p0.LbaStart())
@@ -34,9 +30,11 @@ func TestMBR(t *testing.T) {
 func BenchmarkMBR(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		file, _ := os.Open("../../testdata/evidence/filesystem/mbr_fat16.dd")
-		dec := ks.NewDecoder(file)
 		mbr := Mbr{}
-		mbr.Decode(dec)
+		err := mbr.Decode(file)
+		if err != nil {
+			b.Fatal(err)
+		}
 		file.Close()
 	}
 }

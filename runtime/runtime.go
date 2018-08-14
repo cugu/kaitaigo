@@ -16,19 +16,8 @@ type Decoder struct {
 	Err       error
 }
 
-func NewDecoder(reader io.ReadSeeker) *Decoder {
-	return &Decoder{reader, binary.LittleEndian, nil}
-}
-
-func (dec *Decoder) BinaryRead(value interface{}) {
-	if dec.Err != nil {
-		return
-	}
-	dec.Err = binary.Read(dec, dec.ByteOrder, value)
-}
-
 type KSYDecoder interface {
-	Decode(*Decoder) error
+	Decode(io.ReadSeeker) error
 	DecodeAncestors(*Decoder, interface{}, interface{}) error
 	DecodePos(*Decoder, int64, int, interface{}, interface{}) error
 }
