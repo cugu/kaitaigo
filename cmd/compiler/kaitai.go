@@ -1,24 +1,11 @@
 package main
 
 import (
-	"bytes"
-	"flag"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/iancoleman/strcase"
-	"github.com/kr/pretty"
-	"github.com/pkg/errors"
-	"golang.org/x/tools/imports"
-	yaml "gopkg.in/yaml.v2"
 )
 
 type TypeSwitch struct {
@@ -171,14 +158,6 @@ func (k *Kaitai) setupMap(typeName string) {
 	}
 }
 
-type LineBuffer struct {
-	strings.Builder
-}
-
-func (lb *LineBuffer) WriteLine(s string) {
-	lb.WriteString(s + "\n")
-}
-
 func (k *Kaitai) String(typeName string, parent string, root string) string {
 	var buffer LineBuffer
 
@@ -195,7 +174,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("Root *" + root)
 	buffer.WriteLine("")
 
-	// print attribute
+	// print attributes and instances
 	for _, attribute := range k.Seq {
 		attribute.Category = "attribute"
 		buffer.WriteLine(attribute.String())
@@ -210,10 +189,12 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	// print type end
 	buffer.WriteLine("}")
 
+	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker) (err error) {")
 	buffer.WriteLine("return k.DecodeAncestors(&runtime.Decoder{reader, binary.LittleEndian, nil}, k, k)")
 	buffer.WriteLine("}")
 
+	// decode pos function
 	buffer.WriteLine("func (k *" + typeName + ") DecodePos(dec *runtime.Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {")
 	buffer.WriteLine("if dec.Err != nil {")
 	buffer.WriteLine("return dec.Err")
@@ -222,24 +203,18 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("return k.DecodeAncestors(dec, parent, root)")
 	buffer.WriteLine("}")
 
+	// decode ancestors function
 	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(dec *runtime.Decoder, parent interface{}, root interface{}) (err error) {")
-	buffer.WriteLine("if dec.Err != nil {")
-	buffer.WriteLine("return dec.Err")
-	buffer.WriteLine("}")
-
+	buffer.WriteLine("if dec.Err != nil { return dec.Err }")
 	buffer.WriteLine("k.Parent = parent.(*" + parent + ")")
 	buffer.WriteLine("k.Root = root.(*" + root + ")")
 	buffer.WriteLine("k.Dec = dec")
 	for _, attribute := range k.Seq {
-
 		dataType := attribute.dataType()
-
 		if attribute.Repeat != "" && attribute.RepeatExpr != "" {
-
 			if strings.HasPrefix(dataType, "[]") {
 				buffer.WriteLine("k." + strcase.ToLowerCamel(attribute.ID) + " = make(" + dataType + ", " + goify(attribute.RepeatExpr, "") + ")")
 			}
-
 			if isInt(attribute.RepeatExpr) {
 				buffer.WriteLine("for i := 0; i < " + goify(attribute.RepeatExpr, "") + "; i += 1 {")
 			} else {
@@ -285,6 +260,8 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 		buffer.WriteLine("return " + ptr + "k." + laName)
 		buffer.WriteLine("}")
 	}
+
+	// create instance getter
 	for name, instance := range k.Instances {
 		iName := strcase.ToCamel(name)
 		liName := strcase.ToLowerCamel(name)
@@ -326,6 +303,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 		buffer.WriteLine(typeStr)
 	}
 
+	// print enums
 	for enum, values := range k.Enums {
 		buffer.WriteLine("var " + strcase.ToCamel(enum) + " = struct {")
 		for _, value := range values {
@@ -339,110 +317,4 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	}
 
 	return buffer.String()
-}
-
-func YAMLUnmarshal(name string, source []byte, m interface{}, path string) error {
-	err := yaml.Unmarshal(source, m)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(
-		path+"."+name+".unmarshal",
-		[]byte(fmt.Sprintf("%s%# v\n", "// file generated at "+time.Now().UTC().Format(time.RFC3339)+"\n", pretty.Formatter(m))),
-		0644,
-	)
-}
-
-func createGofile(filepath string, pckg string) error {
-	filename := path.Base(filepath)
-	baseStructSnake := strings.Replace(filename, ".ksy", "", 1)
-	baseStruct := strcase.ToCamel(baseStructSnake)
-
-	// setup logging
-	logfile, err := os.Create(path.Join(pckg, filename+".log"))
-	if err != nil {
-		return errors.Wrap(err, "create logfile")
-	}
-	defer func() {
-		logfile.Sync()
-		logfile.Close()
-	}()
-
-	log.SetOutput(io.MultiWriter(os.Stderr, logfile))
-
-	log.Println("generate", filepath)
-
-	// read source
-	source, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return errors.Wrap(err, "read source")
-	}
-
-	// parse generic
-	m := make(map[interface{}]interface{})
-	err = YAMLUnmarshal("generic", source, &m, path.Join(pckg, filename))
-	if err != nil {
-		return errors.Wrap(err, "parse generic yaml")
-	}
-
-	// parse kaitai
-	kaitai := Kaitai{}
-	err = YAMLUnmarshal("kaitai", source, &kaitai, path.Join(pckg, filename))
-	if err != nil {
-		return errors.Wrap(err, "parse kaitai yaml")
-	}
-
-	allTypes = map[string]Kaitai{}
-	kaitai.setupMap(baseStruct)
-
-	// write go code
-	var buffer bytes.Buffer
-
-	parts := strings.Split(pckg, "/")
-	lastpart := parts[len(parts)-1]
-	buffer.WriteString("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
-	buffer.WriteString("package " + lastpart + "\n")
-	buffer.WriteString("import (\n")
-	for _, pkg := range []string{"fmt", "io", "os", "log", "gitlab.com/cugu/kaitai.go/runtime"} {
-		buffer.WriteString("\"" + pkg + "\"\n")
-	}
-	buffer.WriteString(")\n")
-	buffer.WriteString(kaitai.String(baseStruct, baseStruct, baseStruct))
-
-	formated, err := imports.Process("", buffer.Bytes(), nil)
-	if err != nil {
-		log.Print("Format error", err)
-		formated = buffer.Bytes()
-	}
-	err = ioutil.WriteFile(path.Join(pckg, filename+".go"), formated, 0644)
-	if err != nil {
-		return errors.Wrap(err, "create go file")
-	}
-	return nil
-
-}
-
-func handleFile(filename string) error {
-	if strings.HasSuffix(filename, ".ksy") {
-		return createGofile(filename, filepath.Dir(filename))
-	}
-	return nil
-}
-
-func main() {
-	flag.Parse()
-	for _, filename := range flag.Args() {
-		var err error
-		if strings.HasSuffix(filename, "/...") {
-			recPath := strings.Replace(filename, "/...", "", 1)
-			err = filepath.Walk(recPath, func(path string, f os.FileInfo, err error) error {
-				return handleFile(path)
-			})
-		} else {
-			err = handleFile(filename)
-		}
-		if err != nil {
-			log.Println(err)
-		}
-	}
 }
