@@ -119,43 +119,12 @@ func (k *Attribute) String() string {
 	return strcase.ToLowerCamel(k.ID) + " " + k.dataType() + "`ks:\"" + k.ID + "," + k.Category + "\"`" + doc
 }
 
-var allTypes map[string]Kaitai
-
 type Kaitai struct {
 	Types     map[string]Kaitai         `yaml:"types,omitempty"`
 	Seq       []Attribute               `yaml:"seq,omitempty"`
 	Enums     map[string]map[int]string `yaml:"enums,omitempty"`
 	Doc       string                    `yaml:"doc,omitempty"`
 	Instances map[string]Attribute      `yaml:"instances,omitempty"`
-}
-
-func (k *Kaitai) getParent(typeName string) string {
-	result := map[string]bool{}
-	for ktypeName, ks := range allTypes {
-		for _, attribute := range ks.Seq {
-			if attribute.Type.Type == typeName { // TODO: add TypeSwitch support
-				result[strcase.ToCamel(ktypeName)] = true
-			}
-		}
-		for _, instance := range ks.Instances {
-			if instance.Type.Type == typeName { // TODO: add TypeSwitch support
-				result[strcase.ToCamel(ktypeName)] = true
-			}
-		}
-	}
-	if len(result) == 1 {
-		for k, _ := range result {
-			return k
-		}
-	}
-	return "runtime.KSYDecoder"
-}
-
-func (k *Kaitai) setupMap(typeName string) {
-	allTypes[typeName] = *k
-	for name, t := range k.Types {
-		t.setupMap(name)
-	}
 }
 
 func (k *Kaitai) String(typeName string, parent string, root string) string {
@@ -196,9 +165,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 
 	// decode pos function
 	buffer.WriteLine("func (k *" + typeName + ") DecodePos(dec *runtime.Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {")
-	buffer.WriteLine("if dec.Err != nil {")
-	buffer.WriteLine("return dec.Err")
-	buffer.WriteLine("}")
+	buffer.WriteLine("if dec.Err != nil { return dec.Err }")
 	buffer.WriteLine("_, dec.Err = dec.Seek(offset, whence)")
 	buffer.WriteLine("return k.DecodeAncestors(dec, parent, root)")
 	buffer.WriteLine("}")
@@ -299,7 +266,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 
 	// print subtypes (flattened)
 	for name, t := range k.Types {
-		typeStr := t.String(strcase.ToCamel(name), k.getParent(name), root)
+		typeStr := t.String(strcase.ToCamel(name), getParent(strcase.ToCamel(name)), root)
 		buffer.WriteLine(typeStr)
 	}
 

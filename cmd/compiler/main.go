@@ -71,8 +71,8 @@ func createGofile(filepath string, pckg string) error {
 		return errors.Wrap(err, "parse kaitai yaml")
 	}
 
-	allTypes = map[string]Kaitai{}
-	kaitai.setupMap(baseStruct)
+	parents = map[string]string{}
+	setupMap(&kaitai, baseStruct)
 
 	// write go code
 	var buffer bytes.Buffer
