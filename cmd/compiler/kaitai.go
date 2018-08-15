@@ -154,13 +154,6 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("return k.DecodeAncestors(&runtime.Decoder{reader, binary.LittleEndian, nil}, k, k)")
 	buffer.WriteLine("}")
 
-	// decode pos function
-	/*buffer.WriteLine("func (k *" + typeName + ") DecodePos(dec *runtime.Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {")
-	buffer.WriteLine("if dec.Err != nil { return dec.Err }")
-	buffer.WriteLine("_, dec.Err = dec.Seek(offset, whence)")
-	buffer.WriteLine("return k.DecodeAncestors(dec, parent, root)")
-	buffer.WriteLine("}")*/
-
 	// decode ancestors function
 	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(dec *runtime.Decoder, parent interface{}, root interface{}) (err error) {")
 	buffer.WriteLine("if dec.Err != nil { return dec.Err }")
@@ -195,7 +188,6 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 			if dataType == "*runtime.ByteSlice" {
 				buffer.WriteLine("tmp" + aName + " := make(runtime.ByteSlice, " + goify(attribute.RepeatExpr, "int64") + ")")
 				buffer.WriteLine("k." + laName + " = &tmp" + aName + "")
-				// buffer.WriteLine("k." + laName + " = &runtime.ByteSlice{Size: " + goify(attribute.RepeatExpr, "int64") + "}")
 			} else {
 				buffer.WriteLine("var tmp" + aName + " " + dataType[1:])
 				buffer.WriteLine("k." + laName + " = &tmp" + aName + "")
