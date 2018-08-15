@@ -47,7 +47,9 @@ func (v *Bytes) DecodeAncestors(dec *Decoder, parent interface{}, root interface
 	return
 }
 
-type ByteArray struct {
+type ByteSlice []byte
+
+/* {
 	Dec    *Decoder
 	Start  int64
 	Parent interface{}
@@ -55,12 +57,12 @@ type ByteArray struct {
 
 	Size int64
 	Data []byte
-}
+}*/
 
-func (v *ByteArray) Decode(reader io.ReadSeeker) (err error) {
+func (v *ByteSlice) Decode(reader io.ReadSeeker) (err error) {
 	return v.DecodeAncestors(&Decoder{reader, binary.LittleEndian, nil}, v, v)
 }
-func (v *ByteArray) DecodePos(dec *Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {
+func (v *ByteSlice) DecodePos(dec *Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {
 	if dec.Err != nil {
 		return dec.Err
 	}
@@ -68,14 +70,20 @@ func (v *ByteArray) DecodePos(dec *Decoder, offset int64, whence int, parent int
 	return v.DecodeAncestors(dec, parent, root)
 }
 
-func (v *ByteArray) DecodeAncestors(dec *Decoder, parent interface{}, root interface{}) (err error) {
-	v.Data = make([]byte, v.Size)
-	_, err = dec.Read(v.Data)
+func (v *ByteSlice) DecodeAncestors(dec *Decoder, parent interface{}, root interface{}) (err error) {
+	// v.Data = make([]byte, v.Size)
+	_, err = dec.Read(*v)
 	if err != nil {
 		dec.Err = err
 	}
 	return
 }
+
+/*
+func (v *ByteSlice) Length() *int64 {
+	return &v.Size
+}
+*/
 
 type Uint8 uint8
 

@@ -38,9 +38,11 @@ func TestAPFS(t *testing.T) {
 	omap.DecodeAncestors(apfs.Dec, p0, &apfs)
 	//log.Printf("omap: %#v", omap)
 
-	filesystem.Seek(int64(*omap.TreeRoot())*int64(blocksize), io.SeekStart)
-	omapnode := Node{}
-	omapnode.DecodeAncestors(apfs.Dec, p0, &apfs)
+	/*
+		filesystem.Seek(int64(*omap.TreeRoot())*int64(blocksize), io.SeekStart)
+		omapnode := Node{}
+		omapnode.DecodeAncestors(apfs.Dec, p0, &apfs)
+	*/
 	// log.Printf("omapnode: %#v", omapnode)
 }
 

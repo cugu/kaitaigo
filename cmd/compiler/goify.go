@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"go/format"
 	"log"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"text/scanner"
 
+	"github.com/Knetic/govaluate"
 	"github.com/iancoleman/strcase"
 )
 
@@ -38,17 +40,46 @@ func isInt(expr string) bool {
 	return !strings.Contains(goify(expr, ""), "k.")
 }
 
-func isNumericExpr(expr string) bool {
-	var s scanner.Scanner
+func getType(expr string) (t string) {
+	var re = regexp.MustCompile(`\*k.*\(\)`)
+	goExpr := re.ReplaceAllString(goify(expr, ""), `"x"`)
+
+	if goExpr == "\"x\"" {
+		// return interface if only *k...()
+		return "runtime.KSYDecoder"
+	}
+
+	expression, err := govaluate.NewEvaluableExpressionWithFunctions(goExpr, map[string]govaluate.ExpressionFunction{
+		"len": func(arguments ...interface{}) (interface{}, error) {
+			return 0, nil
+		},
+	})
+	if err != nil {
+		return "runtime.Int64"
+	}
+
+	if expression != nil {
+		result, _ := expression.Evaluate(nil)
+
+		if reflect.TypeOf(result) == reflect.TypeOf("string") {
+			return "runtime.Bytes"
+		} else if reflect.TypeOf(result) == reflect.TypeOf(float64(0)) {
+			return "runtime.Int64"
+		} else {
+			return "runtime.Int64"
+		}
+	}
+
+	/* var s scanner.Scanner
 	s.Init(strings.NewReader(expr))
 	s.Filename = "example"
 
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
-		if tok == -6 {
-			return false
+		if tok == scanner.Char || tok == scanner.String || tok == scanner.RawString || tok == scanner.Comment {
+			return "runtime.Bytes"
 		}
-	}
-	return true
+	} */
+	return "runtime.Int64"
 }
 
 func goenum(s string, cast string) string {
@@ -70,7 +101,70 @@ func goenum(s string, cast string) string {
 	return s
 }
 
-func goify(expr string, casttype string) string {
+func isIdentifierPart(tok rune, casting bool) bool {
+	// handle greater and lower than
+	if tok == '<' || tok == '>' {
+		if !casting {
+			return false
+		} else {
+			return true
+		}
+	}
+	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']'
+}
+
+func goifyIdent(expr, casttype string) string {
+	ret := "*k."
+	var s scanner.Scanner
+	s.Init(strings.NewReader(expr))
+	s.Filename = "example"
+	cast := false
+	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+		switch s.TokenText() {
+		case ".":
+			ret += "."
+		case "<":
+			ret += "("
+		case ">":
+			ret += ")"
+			cast = false
+		case "[", "]":
+			ret += s.TokenText()
+		case "_parent":
+			ret += "Parent"
+		case "_root":
+			ret += "Root"
+		case "_index":
+			ret += "index"
+		case "to_i":
+			ret = "int64(" + ret[:len(ret)-1] + ")"
+		case "as":
+			cast = true
+		case "length":
+			if expr == "length" {
+				ret += strcase.ToCamel(s.TokenText())
+				if !cast {
+					ret += "()"
+				}
+			} else {
+				ret = "len(" + ret[:len(ret)-1] + ")"
+			}
+		default:
+			ret += strcase.ToCamel(s.TokenText())
+			if !cast {
+				ret += "()"
+			}
+		}
+	}
+
+	if casttype != "" {
+		return casttype + "(" + ret + ")"
+	}
+	return ret
+
+}
+
+func goify(expr, casttype string) string {
 
 	// replace binary values
 	re := regexp.MustCompile("0[bB][0-9]+")
@@ -79,66 +173,32 @@ func goify(expr string, casttype string) string {
 	var s scanner.Scanner
 	s.Init(strings.NewReader(expr))
 	s.Filename = "example"
-	startofExpr := true
-	cast := false
-	//io := false
+	identifier := ""
+	casting := false
 	ret := ""
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
-		//if startofExpr {
-		//	io = false
-		//}
-		switch tok {
-		case scanner.Ident:
-			if startofExpr && s.TokenText() != "_index" {
-				if casttype != "" {
-					ret += casttype + "("
-				}
-				ret += "*k."
+
+		// handle identifier chain
+		if !isIdentifierPart(tok, casting) && identifier != "" {
+			ret += " " + goifyIdent(identifier, casttype)
+			identifier = ""
+		}
+
+		switch {
+		case isIdentifierPart(tok, casting):
+
+			identifierPart := s.TokenText()
+			// identify casting start
+			if identifierPart == "as" {
+				casting = true
 			}
-			switch s.TokenText() {
-			// case "_io":
-			// 	ret += "IO"
-			// 	io = true
-			case "_parent":
-				ret += "Parent"
-			case "_root":
-				ret += "Root"
-			case "_index":
-				ret += "index"
-			case "to_i":
-				ret = "int64(" + ret[:len(ret)-1] + ")"
-				// ret += "ToI()"
-			case "as":
-				cast = true
-			default:
-				/*if !cast {
-					ret += "Get"
-				}*/
-				ret += strcase.ToCamel(s.TokenText())
-				// if io {
-				if !cast {
-					ret += "()"
-				}
+			// identify casting end
+			if tok == '>' {
+				casting = false
 			}
-			if casttype != "" && s.Peek() != 46 && s.Peek() != scanner.Ident {
-				ret += ")"
-			}
-			startofExpr = s.Peek() != 46
-		case 60, 62:
-			if s.TokenText() == "<" && cast {
-				ret += "("
-				startofExpr = false
-			} else if s.TokenText() == ">" && cast {
-				ret += ")"
-				cast = false
-				startofExpr = false
-			} else {
-				ret += s.TokenText()
-			}
-		case 91, 93:
-			startofExpr = false
-			ret += s.TokenText()
-		case 63:
+
+			identifier += identifierPart
+		case tok == '?':
 			parts := strings.SplitN(expr, "?", 2)
 			check := goify(parts[0], "")
 			cases := strings.SplitN(parts[1], ":", 2)
@@ -148,8 +208,15 @@ func goify(expr string, casttype string) string {
 		default:
 			ret += s.TokenText()
 		}
-
 	}
+
+	// handle identifier chain
+	if identifier != "" {
+		ret += " " + goifyIdent(identifier, casttype)
+	}
+
+	// remove whitespace and format code
+	ret = strings.TrimSpace(ret)
 	formated, err := format.Source([]byte(ret))
 	if err != nil {
 		log.Println(ret, err)

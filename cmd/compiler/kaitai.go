@@ -77,19 +77,15 @@ func (k *Attribute) dataType() string {
 	dataType := k.Type.String()
 	if dataType == "runtime.Bytes" { // || dataType == "string" {
 		if k.Value != "" {
-			if isNumericExpr(k.Value) {
-				dataType = "runtime.Int64"
-			} else {
-				dataType = "runtime.Bytes"
-			}
+			dataType = getType(k.Value)
 		} else if k.Size != "" {
 			k.Repeat = "yes"
 			k.RepeatExpr = strings.Replace(k.Size, "%", "%%", -1)
-			return "*runtime.ByteArray"
+			return "*runtime.ByteSlice"
 		} else if k.Contents.Len() != 0 {
 			k.Repeat = "yes"
 			k.RepeatExpr = fmt.Sprintf("%d", k.Contents.Len())
-			return "*runtime.ByteArray"
+			return "*runtime.ByteSlice"
 		}
 	}
 
@@ -137,7 +133,6 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("Start int64")
 	buffer.WriteLine("Parent *" + parent)
 	buffer.WriteLine("Root *" + root)
-	buffer.WriteLine("")
 
 	// print attributes and instances
 	for _, attribute := range k.Seq {
@@ -160,11 +155,11 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("}")
 
 	// decode pos function
-	buffer.WriteLine("func (k *" + typeName + ") DecodePos(dec *runtime.Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {")
+	/*buffer.WriteLine("func (k *" + typeName + ") DecodePos(dec *runtime.Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {")
 	buffer.WriteLine("if dec.Err != nil { return dec.Err }")
 	buffer.WriteLine("_, dec.Err = dec.Seek(offset, whence)")
 	buffer.WriteLine("return k.DecodeAncestors(dec, parent, root)")
-	buffer.WriteLine("}")
+	buffer.WriteLine("}")*/
 
 	// decode ancestors function
 	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(dec *runtime.Decoder, parent interface{}, root interface{}) (err error) {")
@@ -176,11 +171,11 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 		laName := strcase.ToLowerCamel(attribute.ID)
 		aName := strcase.ToCamel(attribute.ID)
 		dataType := attribute.dataType()
-		if attribute.Repeat != "" && attribute.RepeatExpr != "" && dataType != "*runtime.ByteArray" {
+		if attribute.Repeat != "" && attribute.RepeatExpr != "" && dataType != "*runtime.ByteSlice" {
 			if strings.HasPrefix(dataType, "[]") {
 				buffer.WriteLine("k." + laName + " = make(" + dataType + ", " + goify(attribute.RepeatExpr, "") + ")")
 			}
-			if isNumericExpr(attribute.RepeatExpr) {
+			if getType(attribute.RepeatExpr) == "runtime.Int64" {
 				buffer.WriteLine("for i := 0; i < " + goify(attribute.RepeatExpr, "") + "; i += 1 {")
 			} else {
 				buffer.WriteLine("for i := 0; i < int(" + goify(attribute.RepeatExpr, "") + "); i += 1 {")
@@ -197,8 +192,10 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 			}
 			buffer.WriteLine("}")
 		} else {
-			if dataType == "*runtime.ByteArray" {
-				buffer.WriteLine("k." + laName + " = &runtime.ByteArray{Size: " + goify(attribute.RepeatExpr, "int64") + "}")
+			if dataType == "*runtime.ByteSlice" {
+				buffer.WriteLine("tmp" + aName + " := make(runtime.ByteSlice, " + goify(attribute.RepeatExpr, "int64") + ")")
+				buffer.WriteLine("k." + laName + " = &tmp" + aName + "")
+				// buffer.WriteLine("k." + laName + " = &runtime.ByteSlice{Size: " + goify(attribute.RepeatExpr, "int64") + "}")
 			} else {
 				buffer.WriteLine("var tmp" + aName + " " + dataType[1:])
 				buffer.WriteLine("k." + laName + " = &tmp" + aName + "")
@@ -245,11 +242,17 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 		buffer.WriteLine("if k." + liName + " == nil{")
 
 		if instance.Pos == "" {
-			buffer.WriteLine("tmp := " + dataType[1:] + "(" + goify(instance.Value, "") + ")")
-			buffer.WriteLine("k." + liName + " = &tmp")
+			if dataType == "runtime.KSYDecoder" {
+				buffer.WriteLine("k." + liName + " = " + goify(instance.Value, "")[1:])
+			} else if strings.HasPrefix(dataType, "*") {
+				buffer.WriteLine("tmp := " + dataType[1:] + "(" + goify(instance.Value, "") + ")")
+				buffer.WriteLine("k." + liName + " = &tmp")
+			} else {
+				buffer.WriteLine("tmp := " + dataType + "(" + goify(instance.Value, "") + ")")
+				buffer.WriteLine("k." + liName + " = tmp")
+			}
 		} else {
-
-			if strings.HasPrefix(dataType, "*") {
+			if strings.HasPrefix(dataType, "*") && dataType != "runtime.KSYDecoder" {
 				buffer.WriteLine("var tmp" + iName + " " + dataType[1:])
 				buffer.WriteLine("k." + liName + " = &tmp" + iName)
 			} else {
@@ -265,15 +268,23 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 			case "seek_end":
 				whence = "io.SeekEnd"
 			}
+			buffer.WriteLine("_, k.Dec.Err = k.Dec.Seek(" + goify(instance.Pos, "int64") + ", " + whence + ")")
 
 			if instance.Repeat != "" && instance.RepeatExpr != "" {
 				dataType := instance.dataType()
-				buffer.WriteLine("k." + liName + " = make(" + dataType + ", " + goify(instance.RepeatExpr, "") + ")") // TODO: needed?
+				rm := 0
+				if strings.HasPrefix(dataType, "*") {
+					rm = 1
+				} else if strings.HasPrefix(dataType, "[]") {
+					rm = 0
+				}
+				buffer.WriteLine("k." + liName + " = make(" + dataType[rm:] + ", " + goify(instance.RepeatExpr, "") + ")") // TODO: needed?
+
 				buffer.WriteLine("for i := 0; i < " + goify(instance.RepeatExpr, "int") + "; i++ {")
-				buffer.WriteLine("k." + liName + "[i].DecodePos(k.Dec, " + goify(instance.Pos, "int64") + ", " + whence + ", k, k.Root)")
+				buffer.WriteLine("k." + liName + "[i].DecodeAncestors(k.Dec, k, k.Root)")
 				buffer.WriteLine("}")
 			} else {
-				buffer.WriteLine("k." + liName + ".DecodePos(k.Dec, " + goify(instance.Pos, "int64") + ", " + whence + ", k, k.Root)")
+				buffer.WriteLine("k." + liName + ".DecodeAncestors(k.Dec, k, k.Root)")
 			}
 
 		}

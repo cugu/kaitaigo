@@ -19,8 +19,11 @@ code:
 	compiler `find "cmd/compiler" -name "*.ksy" -type f`
 	compiler `find "parser/mbr" -name "*.ksy" -type f`
 	compiler `find "parser/gpt" -name "*.ksy" -type f`
+	compiler `find "parser/apfs" -name "*.ksy" -type f`
 	compiler `find "parser/kaitai/hello_world" -name "*.ksy" -type f`
 	compiler `find "parser/kaitai/expr_0" -name "*.ksy" -type f`
+	compiler `find "parser/kaitai/expr_1" -name "*.ksy" -type f`
+	# compiler `find "parser/kaitai/expr_2" -name "*.ksy" -type f`
 
 test:
 	@printf '\n\nTest\n'
@@ -28,8 +31,11 @@ test:
 	@go test gitlab.com/cugu/kaitai.go/cmd/compiler
 	@go test gitlab.com/cugu/kaitai.go/parser/mbr
 	@go test gitlab.com/cugu/kaitai.go/parser/gpt
+	@go test gitlab.com/cugu/kaitai.go/parser/apfs
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/hello_world
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_0
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_1
+	@#go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_2
 
 
 perf:

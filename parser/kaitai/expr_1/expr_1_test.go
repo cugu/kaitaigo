@@ -1,4 +1,4 @@
-package spec
+package expr_1
 
 import (
 	"os"
@@ -19,19 +19,8 @@ func TestExpr1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 10, r.LenOf1)
-
-	lenOf1Mod, err := r.LenOf1Mod()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.EqualValues(t, 8, lenOf1Mod)
-
-	assert.EqualValues(t, "Some ASC", r.Str1)
-
-	str1Len, err := r.Str1Len()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.EqualValues(t, 8, str1Len)
+	assert.EqualValues(t, 10, *r.LenOf1())
+	assert.EqualValues(t, 8, *r.LenOf1Mod())
+	assert.EqualValues(t, "Some ASC", *r.Str1())
+	assert.EqualValues(t, 8, *r.Str1Len())
 }

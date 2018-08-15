@@ -19,8 +19,9 @@ func TestGoify(t *testing.T) {
 		"(_parent.level > 0) ? 256 : key_hdr.kind.to_i":                   "func()int64{if (*k.Parent.Level() > 0){return 256}else{return int64(*k.KeyHdr().Kind())}}()",
 		"_root.block_size - data_offset - 40 * (_parent.node_type & 1)":   "*k.Root.BlockSize() - *k.DataOffset() - 40*(*k.Parent.NodeType()&1)",
 		"key_low + ((key_high & 0x0FFFFFFF) << 32)":                       "*k.KeyLow() + ((*k.KeyHigh() & 0x0FFFFFFF) << 32)",
-		"xf_header[_index].length + ((8 - xf_header[_index].length) % 8)": "*k.XfHeader()[index].Length() + ((8 - *k.XfHeader()[index].Length()) % 8)",
+		"xf_header[_index].length + ((8 - xf_header[_index].length) % 8)": "len(*k.XfHeader()[index]) + ((8 - len(*k.XfHeader()[index])) % 8)",
 	}
+
 	for input, result := range tests {
 		assert.EqualValues(t, result, goify(input, ""))
 	}
