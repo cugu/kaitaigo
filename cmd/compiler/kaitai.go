@@ -151,12 +151,13 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker) (err error) {")
 	buffer.WriteLine("if decoder == nil { decoder = &runtime.Decoder{reader, binary.LittleEndian, nil}; runtime.RTDecoder = decoder }")
-	buffer.WriteLine("return k.DecodeAncestors(k, k)")
+	buffer.WriteLine("k.DecodeAncestors(k, k)")
+	buffer.WriteLine("return decoder.Err")
 	buffer.WriteLine("}")
 
 	// decode ancestors function
-	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(parent interface{}, root interface{}) (err error) {")
-	buffer.WriteLine("if decoder.Err != nil { return decoder.Err }")
+	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(parent interface{}, root interface{}) () {")
+	buffer.WriteLine("if decoder.Err != nil { return }")
 	buffer.WriteLine("k.Parent = parent.(*" + parent + ")")
 	buffer.WriteLine("k.Root = root.(*" + root + ")")
 	for _, attribute := range k.Seq {
@@ -196,7 +197,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 		}
 
 	}
-	buffer.WriteLine("return decoder.Err")
+	buffer.WriteLine("return")
 	buffer.WriteLine("}")
 
 	// create getter
