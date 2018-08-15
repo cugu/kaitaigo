@@ -12,6 +12,6 @@ type Decoder struct {
 }
 
 type KSYDecoder interface {
-	Decode(io.ReadSeeker) error
-	DecodeAncestors(*Decoder, interface{}, interface{}) error
+	// Decode(io.ReadSeeker) error
+	DecodeAncestors(interface{}, interface{}) error
 }

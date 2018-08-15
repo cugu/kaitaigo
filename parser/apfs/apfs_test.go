@@ -35,13 +35,13 @@ func TestAPFS(t *testing.T) {
 	assert.EqualValues(t, 0x949, *containerSuperblock.OmapOid())
 	filesystem.Seek(int64(*containerSuperblock.OmapOid())*int64(blocksize), io.SeekStart)
 	omap := Btree{}
-	omap.DecodeAncestors(apfs.Dec, p0, &apfs)
+	omap.DecodeAncestors(p0, &apfs)
 	//log.Printf("omap: %#v", omap)
 
 	/*
 		filesystem.Seek(int64(*omap.TreeRoot())*int64(blocksize), io.SeekStart)
 		omapnode := Node{}
-		omapnode.DecodeAncestors(apfs.Dec, p0, &apfs)
+		omapnode.DecodeAncestors(p0, &apfs)
 	*/
 	// log.Printf("omapnode: %#v", omapnode)
 }
@@ -73,12 +73,12 @@ func BenchmarkAPFS(t *testing.B) {
 		assert.EqualValues(t, 0x949, *containerSuperblock.OmapOid())
 		filesystem.Seek(int64(*containerSuperblock.OmapOid())*int64(blocksize), io.SeekStart)
 		omap := Btree{}
-		omap.DecodeAncestors(apfs.Dec, p0, &apfs)
+		omap.DecodeAncestors(p0, &apfs)
 		log.Printf("omap: %#v", omap)
 
 		filesystem.Seek(int64(*omap.TreeRoot())*int64(blocksize), io.SeekStart)
 		omapnode := Node{}
-		omapnode.DecodeAncestors(apfs.Dec, p0, &apfs)
+		omapnode.DecodeAncestors(p0, &apfs)
 		log.Printf("omapnode: %#v", omapnode)
 
 		file.Close()

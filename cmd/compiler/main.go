@@ -87,6 +87,8 @@ func createGofile(filepath string, pckg string) error {
 		buffer.WriteString("\"" + pkg + "\"\n")
 	}
 	buffer.WriteString(")\n")
+	buffer.WriteString("var decoder *runtime.Decoder\n")
+
 	buffer.WriteString(kaitai.String(baseStruct, baseStruct, baseStruct))
 
 	formated, err := imports.Process("", buffer.Bytes(), nil)
