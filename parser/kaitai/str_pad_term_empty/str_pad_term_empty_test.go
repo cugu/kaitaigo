@@ -4,21 +4,17 @@ import (
 	"os"
 	"testing"
 
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
 	"github.com/stretchr/testify/assert"
-
-	. "test_formats"
 )
 
 func TestStrPadTermEmpty(t *testing.T) {
-	f, err := os.Open("../../src/str_pad_term_empty.bin")
+	f, err := os.Open("../../../testdata/kaitai/str_pad_term_empty.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
 
 	var r StrPadTermEmpty
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}

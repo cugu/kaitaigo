@@ -4,25 +4,25 @@ package spec
 
 import (
 	"os"
+
 	"testing"
+
 	"github.com/stretchr/testify/assert"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-	. "test_formats"
 )
 
 func TestTermStrz(t *testing.T) {
-	f, err := os.Open("../../src/term_strz.bin")
-	if err != nil {
-		t.Fatal(err)
-	}
-	s := kaitai.NewStream(f)
-	var r TermStrz
-	err = r.Read(s, &r, &r)
+	f, err := os.Open("../../../testdata/kaitai/term_strz.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, "foo", r.S1)
-	assert.EqualValues(t, "bar", r.S2)
-	assert.EqualValues(t, "|baz@", r.S3)
+	var r TermStrz
+	err = r.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.EqualValues(t, "foo", r.S1())
+	assert.EqualValues(t, "bar", r.S2())
+	assert.EqualValues(t, "|baz@", r.S3())
 }

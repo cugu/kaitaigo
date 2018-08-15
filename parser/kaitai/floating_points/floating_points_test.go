@@ -5,17 +5,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-
-	. "test_formats"
 )
 
 func TestFloatingPoints(t *testing.T) {
-	f, err := os.Open("../../src/floating_points.bin")
+	f, err := os.Open("../../../testdata/kaitai/floating_points.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
 
 	var h FloatingPoints
 	err = h.Read(s, &h, &h)

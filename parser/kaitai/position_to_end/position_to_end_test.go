@@ -4,20 +4,20 @@ package spec
 
 import (
 	"os"
+
 	"testing"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-	. "test_formats"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPositionToEnd(t *testing.T) {
-	f, err := os.Open("../../src/position_to_end.bin")
+	f, err := os.Open("../../../testdata/kaitai/position_to_end.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
+
 	var r PositionToEnd
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}

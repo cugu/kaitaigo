@@ -4,20 +4,20 @@ package spec
 
 import (
 	"os"
+
 	"testing"
+
 	"github.com/stretchr/testify/assert"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-	. "test_formats"
 )
 
 func TestRepeatEosStruct(t *testing.T) {
-	f, err := os.Open("../../src/repeat_eos_struct.bin")
+	f, err := os.Open("../../../testdata/kaitai/repeat_eos_struct.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
+
 	var r RepeatEosStruct
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}

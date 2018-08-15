@@ -38,17 +38,41 @@ func isInt(expr string) bool {
 	return !strings.Contains(goify(expr, ""), "k.")
 }
 
+func isNumericExpr(expr string) bool {
+	var s scanner.Scanner
+	s.Init(strings.NewReader(expr))
+	s.Filename = "example"
+
+	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+		if tok == -6 {
+			return false
+		}
+	}
+	return true
+}
+
 func goenum(s string, cast string) string {
+	// cast
+	if strings.HasSuffix(s, ".to_i") {
+		s = s[:len(s)-5]
+		cast = "int64"
+	}
+
 	parts := strings.SplitN(s, "::", 2)
+	if len(parts) < 2 {
+		return s
+	}
 	s = strcase.ToCamel(parts[0]) + "." + strcase.ToCamel(parts[1])
 	if cast != "" {
 		return cast + "(" + s + ")"
 	}
+
 	return s
 }
 
 func goify(expr string, casttype string) string {
 
+	// replace binary values
 	re := regexp.MustCompile("0[bB][0-9]+")
 	expr = re.ReplaceAllStringFunc(expr, bitString)
 
@@ -69,7 +93,7 @@ func goify(expr string, casttype string) string {
 				if casttype != "" {
 					ret += casttype + "("
 				}
-				ret += "k."
+				ret += "*k."
 			}
 			switch s.TokenText() {
 			// case "_io":
@@ -82,7 +106,8 @@ func goify(expr string, casttype string) string {
 			case "_index":
 				ret += "index"
 			case "to_i":
-				ret += "ToI()"
+				ret = "int64(" + ret[:len(ret)-1] + ")"
+				// ret += "ToI()"
 			case "as":
 				cast = true
 			default:
@@ -119,7 +144,7 @@ func goify(expr string, casttype string) string {
 			cases := strings.SplitN(parts[1], ":", 2)
 			ifvalue := goify(cases[0], "")
 			elsevalue := goify(cases[1], "")
-			return fmt.Sprintf("func()int{if %s{return %s}else{return %s}}()", check, ifvalue, elsevalue)
+			return fmt.Sprintf("func()int64{if %s{return %s}else{return %s}}()", check, ifvalue, elsevalue)
 		default:
 			ret += s.TokenText()
 		}

@@ -4,20 +4,20 @@ package spec
 
 import (
 	"os"
+
 	"testing"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-	. "test_formats"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBcdUserTypeBe(t *testing.T) {
-	f, err := os.Open("../../src/bcd_user_type_be.bin")
+	f, err := os.Open("../../../testdata/kaitai/bcd_user_type_be.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
+
 	var r BcdUserTypeBe
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,20 +4,20 @@ package spec
 
 import (
 	"os"
+
 	"testing"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-	. "test_formats"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExprArray(t *testing.T) {
-	f, err := os.Open("../../src/expr_array.bin")
+	f, err := os.Open("../../../testdata/kaitai/expr_array.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
+
 	var r ExprArray
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}

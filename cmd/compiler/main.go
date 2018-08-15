@@ -77,9 +77,10 @@ func createGofile(filepath string, pckg string) error {
 	// write go code
 	var buffer bytes.Buffer
 
+	buffer.WriteString("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
+
 	parts := strings.Split(pckg, "/")
 	lastpart := parts[len(parts)-1]
-	buffer.WriteString("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
 	buffer.WriteString("package " + lastpart + "\n")
 	buffer.WriteString("import (\n")
 	for _, pkg := range []string{"fmt", "io", "os", "log", "gitlab.com/cugu/kaitai.go/runtime"} {

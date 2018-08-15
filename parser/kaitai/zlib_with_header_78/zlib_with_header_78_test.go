@@ -4,20 +4,20 @@ package spec
 
 import (
 	"os"
+
 	"testing"
+
 	"github.com/stretchr/testify/assert"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-	. "test_formats"
 )
 
 func TestZlibWithHeader78(t *testing.T) {
-	f, err := os.Open("../../src/zlib_with_header_78.bin")
+	f, err := os.Open("../../../testdata/kaitai/zlib_with_header_78.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
+
 	var r ZlibWithHeader78
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}

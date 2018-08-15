@@ -47,6 +47,36 @@ func (v *Bytes) DecodeAncestors(dec *Decoder, parent interface{}, root interface
 	return
 }
 
+type ByteArray struct {
+	Dec    *Decoder
+	Start  int64
+	Parent interface{}
+	Root   interface{}
+
+	Size int64
+	Data []byte
+}
+
+func (v *ByteArray) Decode(reader io.ReadSeeker) (err error) {
+	return v.DecodeAncestors(&Decoder{reader, binary.LittleEndian, nil}, v, v)
+}
+func (v *ByteArray) DecodePos(dec *Decoder, offset int64, whence int, parent interface{}, root interface{}) (err error) {
+	if dec.Err != nil {
+		return dec.Err
+	}
+	_, dec.Err = dec.Seek(offset, whence)
+	return v.DecodeAncestors(dec, parent, root)
+}
+
+func (v *ByteArray) DecodeAncestors(dec *Decoder, parent interface{}, root interface{}) (err error) {
+	v.Data = make([]byte, v.Size)
+	_, err = dec.Read(v.Data)
+	if err != nil {
+		dec.Err = err
+	}
+	return
+}
+
 type Uint8 uint8
 
 func (v *Uint8) Decode(reader io.ReadSeeker) (err error) {

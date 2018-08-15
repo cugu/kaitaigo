@@ -5,9 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/kaitai-io/kaitai_struct_go_runtime/kaitai"
-
-	. "test_formats"
 )
 
 func assertInstanceEqualInt(t *testing.T, expected int, instCall func() (int, error)) {
@@ -35,14 +32,13 @@ func assertInstanceEqualString(t *testing.T, expected string, instCall func() (s
 }
 
 func TestExpr2(t *testing.T) {
-	f, err := os.Open("../../src/str_encodings.bin")
+	f, err := os.Open("../../../testdata/kaitai/str_encodings.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := kaitai.NewStream(f)
 
 	var r Expr2
-	err = r.Read(s, &r, &r)
+	err = r.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}
