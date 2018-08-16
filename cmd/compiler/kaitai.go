@@ -16,6 +16,7 @@ type TypeSwitch struct {
 type Type struct {
 	Type       string
 	TypeSwitch TypeSwitch
+	CustomType bool
 }
 
 func (y *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -23,6 +24,9 @@ func (y *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		err = unmarshal(&y.TypeSwitch)
 		return err
+	}
+	if _, ok := typeMapping[y.Type]; !ok {
+		y.CustomType = true
 	}
 	return nil
 }
@@ -73,7 +77,11 @@ type Attribute struct {
 	Whence     string   `yaml:"whence,omitempty"`
 }
 
-func (k *Attribute) dataType() string {
+func (k *Attribute) Name() string {
+	return strcase.ToLowerCamel(k.ID)
+}
+
+func (k *Attribute) DataType() string {
 	dataType := k.Type.String()
 	if dataType == "runtime.Bytes" { // || dataType == "string" {
 		if k.Value != "" {
@@ -81,11 +89,11 @@ func (k *Attribute) dataType() string {
 		} else if k.Size != "" {
 			k.Repeat = "yes"
 			k.RepeatExpr = strings.Replace(k.Size, "%", "%%", -1)
-			return "*runtime.ByteSlice"
+			return "runtime.ByteSlice"
 		} else if k.Contents.Len() != 0 {
 			k.Repeat = "yes"
 			k.RepeatExpr = fmt.Sprintf("%d", k.Contents.Len())
-			return "*runtime.ByteSlice"
+			return "runtime.ByteSlice"
 		}
 	}
 
@@ -95,9 +103,8 @@ func (k *Attribute) dataType() string {
 		} else {
 			dataType = "[]" + dataType
 		}
-	} else if dataType != "runtime.KSYDecoder" {
+	} else if k.Type.CustomType {
 		dataType = "*" + dataType
-
 	}
 	return dataType
 }
@@ -108,7 +115,7 @@ func (k *Attribute) String() string {
 		doc = " // " + k.Doc
 	}
 
-	return strcase.ToLowerCamel(k.ID) + " " + k.dataType() + "`ks:\"" + k.ID + "," + k.Category + "\"`" + doc
+	return k.Name() + " " + k.DataType() + "`ks:\"" + k.ID + "," + k.Category + "\"`" + doc
 }
 
 type Kaitai struct {
@@ -117,6 +124,62 @@ type Kaitai struct {
 	Enums     map[string]map[int]string `yaml:"enums,omitempty"`
 	Doc       string                    `yaml:"doc,omitempty"`
 	Instances map[string]Attribute      `yaml:"instances,omitempty"`
+}
+
+func (k *Kaitai) InitAttr(attr Attribute) string {
+	var buffer LineBuffer
+
+	if attr.Value != "" {
+		// value instance
+		if attr.DataType() == "runtime.KSYDecoder" {
+			buffer.WriteLine("k." + attr.Name() + " = " + goify(attr.Value, ""))
+		} else {
+			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "(" + goify(attr.Value, "") + ")")
+		}
+		return buffer.String()
+	}
+
+	if attr.Pos != "" {
+		buffer.WriteLine("_, decoder.Err = decoder.Seek(k.Start, io.SeekStart)")
+		whence := "io.SeekCurrent"
+		switch attr.Whence {
+		case "seek_set":
+			whence = "io.SeekStart"
+		case "seek_end":
+			whence = "io.SeekEnd"
+		}
+		buffer.WriteLine("_, decoder.Err = decoder.Seek(" + goify(attr.Pos, "int64") + ", " + whence + ")")
+	}
+
+	switch {
+	case attr.DataType() == "runtime.ByteSlice":
+		// byteslice
+		buffer.WriteLine("k." + attr.Name() + " = make(runtime.ByteSlice, " + goify(attr.RepeatExpr, "int64") + ")")
+	case attr.Repeat != "" && attr.RepeatExpr != "":
+		// array
+		if strings.HasPrefix(attr.DataType(), "[]") {
+			buffer.WriteLine("k." + attr.Name() + " = make(" + attr.DataType() + ", " + goify(attr.RepeatExpr, "") + ")")
+		}
+		buffer.WriteLine("for i := 0; i < int(" + goify(attr.RepeatExpr, "") + "); i += 1 {")
+		buffer.WriteLine("k." + attr.Name() + "[i].DecodeAncestors(k, k.Root)")
+		buffer.WriteLine("}")
+		return buffer.String()
+	case attr.Type.CustomType:
+		// custom struct
+		// init variable
+		buffer.WriteLine("k." + attr.Name() + " = &" + attr.DataType()[1:] + "{}")
+	case attr.Type.TypeSwitch.SwitchOn != "":
+		buffer.WriteLine("switch " + goify(attr.Type.TypeSwitch.SwitchOn, "int64") + " {")
+		for casevalue, casetype := range attr.Type.TypeSwitch.Cases {
+			buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
+			buffer.WriteLine("k." + attr.Name() + " = &" + casetype.String() + "{}")
+		}
+		buffer.WriteLine("}")
+	}
+
+	buffer.WriteLine("k." + attr.Name() + ".DecodeAncestors(k, k.Root)")
+	return buffer.String()
+
 }
 
 func (k *Kaitai) String(typeName string, parent string, root string) string {
@@ -130,19 +193,20 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	// print type start
 	buffer.WriteLine("type " + typeName + " struct{")
 	buffer.WriteLine("Start int64")
-	buffer.WriteLine("Parent *" + parent)
+	buffer.WriteLine("parent interface{}")
 	buffer.WriteLine("Root *" + root)
 
-	// print attributes and instances
-	for _, attribute := range k.Seq {
-		attribute.Category = "attribute"
-		buffer.WriteLine(attribute.String())
+	// print attrs and insts
+	for _, attr := range k.Seq {
+		attr.Category = "attribute"
+		buffer.WriteLine(attr.String())
 	}
 
-	for name, instance := range k.Instances {
-		instance.Category = "instance"
-		instance.ID = name
-		buffer.WriteLine(instance.String())
+	for name, inst := range k.Instances {
+		inst.Category = "instance"
+		inst.ID = name
+		buffer.WriteLine(inst.String())
+		buffer.WriteLine(strcase.ToLowerCamel(inst.ID) + "Set bool")
 	}
 
 	// print type end
@@ -150,138 +214,44 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 
 	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker) (err error) {")
+	buffer.WriteLine("if decoder != nil && decoder.Err != nil { return decoder.Err }")
 	buffer.WriteLine("if decoder == nil { decoder = &runtime.Decoder{reader, binary.LittleEndian, nil}; runtime.RTDecoder = decoder }")
 	buffer.WriteLine("k.DecodeAncestors(k, k)")
 	buffer.WriteLine("return decoder.Err")
 	buffer.WriteLine("}")
 
+	// parent function
+	buffer.WriteLine("func (k *" + typeName + ") Parent() (*" + parent + ") {")
+	buffer.WriteLine("return k.parent.(*" + parent + ")")
+	buffer.WriteLine("}")
+
 	// decode ancestors function
 	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(parent interface{}, root interface{}) () {")
 	buffer.WriteLine("if decoder.Err != nil { return }")
-	buffer.WriteLine("k.Parent = parent.(*" + parent + ")")
+	buffer.WriteLine("k.parent = parent")
 	buffer.WriteLine("k.Root = root.(*" + root + ")")
-	for _, attribute := range k.Seq {
-		laName := strcase.ToLowerCamel(attribute.ID)
-		aName := strcase.ToCamel(attribute.ID)
-		dataType := attribute.dataType()
-		if attribute.Repeat != "" && attribute.RepeatExpr != "" && dataType != "*runtime.ByteSlice" {
-			if strings.HasPrefix(dataType, "[]") {
-				buffer.WriteLine("k." + laName + " = make(" + dataType + ", " + goify(attribute.RepeatExpr, "") + ")")
-			}
-			if getType(attribute.RepeatExpr) == "runtime.Int64" {
-				buffer.WriteLine("for i := 0; i < " + goify(attribute.RepeatExpr, "") + "; i += 1 {")
-			} else {
-				buffer.WriteLine("for i := 0; i < int(" + goify(attribute.RepeatExpr, "") + "); i += 1 {")
-			}
-			buffer.WriteLine("k." + laName + "[i].DecodeAncestors(k, k.Root)")
-			buffer.WriteLine("}")
-		} else if dataType == "runtime.KSYDecoder" {
-			buffer.WriteLine("switch " + goify(attribute.Type.TypeSwitch.SwitchOn, "int64") + " {")
-			for casevalue, casetype := range attribute.Type.TypeSwitch.Cases {
-				buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
-				buffer.WriteLine("so := " + casetype.String() + "{}")
-				buffer.WriteLine("so.DecodeAncestors(k, k.Root)")
-				buffer.WriteLine("k." + laName + " = &so")
-			}
-			buffer.WriteLine("}")
-		} else {
-			if dataType == "*runtime.ByteSlice" {
-				buffer.WriteLine("tmp" + aName + " := make(runtime.ByteSlice, " + goify(attribute.RepeatExpr, "int64") + ")")
-				buffer.WriteLine("k." + laName + " = &tmp" + aName + "")
-			} else {
-				buffer.WriteLine("var tmp" + aName + " " + dataType[1:])
-				buffer.WriteLine("k." + laName + " = &tmp" + aName + "")
-
-			}
-			buffer.WriteLine("k." + laName + ".DecodeAncestors(k, k.Root)")
-		}
-
+	for _, attr := range k.Seq {
+		buffer.WriteString(k.InitAttr(attr))
 	}
 	buffer.WriteLine("return")
 	buffer.WriteLine("}")
 
 	// create getter
-	for _, attribute := range k.Seq {
-		aName := strcase.ToCamel(attribute.ID)
-		laName := strcase.ToLowerCamel(attribute.ID)
-		dataType := attribute.dataType()
-
-		buffer.WriteLine("func (k *" + typeName + ") " + aName + "() (" + dataType + ") {")
-
-		buffer.WriteLine("return " + "" + "k." + laName)
+	for _, attr := range k.Seq {
+		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(attr.Name()) + "() (" + attr.DataType() + ") {")
+		buffer.WriteLine("return " + "" + "k." + attr.Name())
 		buffer.WriteLine("}")
 	}
 
-	// create instance getter
-	for name, instance := range k.Instances {
-		iName := strcase.ToCamel(name)
-		liName := strcase.ToLowerCamel(name)
-		dataType := instance.dataType()
-
-		buffer.WriteLine("func (k *" + typeName + ") " + iName + "() (" + dataType + ") {")
-
-		if dataType == "runtime.KSYDecoder" {
-			buffer.WriteLine("switch " + goify(instance.Type.TypeSwitch.SwitchOn, "int64") + " {")
-			for casevalue, casetype := range instance.Type.TypeSwitch.Cases {
-				buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
-				buffer.WriteLine("so := " + casetype.String() + "{}")
-				buffer.WriteLine("so.DecodeAncestors(k, k.Root)")
-				buffer.WriteLine("k." + liName + " = &so")
-			}
-			buffer.WriteLine("}")
-		}
-
-		buffer.WriteLine("if k." + liName + " == nil{")
-
-		if instance.Pos == "" {
-			if dataType == "runtime.KSYDecoder" {
-				buffer.WriteLine("k." + liName + " = " + goify(instance.Value, "")[1:])
-			} else if strings.HasPrefix(dataType, "*") {
-				buffer.WriteLine("tmp := " + dataType[1:] + "(" + goify(instance.Value, "") + ")")
-				buffer.WriteLine("k." + liName + " = &tmp")
-			} else {
-				buffer.WriteLine("tmp := " + dataType + "(" + goify(instance.Value, "") + ")")
-				buffer.WriteLine("k." + liName + " = tmp")
-			}
-		} else {
-			if strings.HasPrefix(dataType, "*") && dataType != "runtime.KSYDecoder" {
-				buffer.WriteLine("var tmp" + iName + " " + dataType[1:])
-				buffer.WriteLine("k." + liName + " = &tmp" + iName)
-			} else {
-				buffer.WriteLine("var tmp" + iName + " " + dataType)
-				buffer.WriteLine("k." + liName + " = tmp" + iName)
-			}
-
-			buffer.WriteLine("_, decoder.Err = decoder.Seek(k.Start, io.SeekStart)")
-			whence := "io.SeekCurrent"
-			switch instance.Whence {
-			case "seek_set":
-				whence = "io.SeekStart"
-			case "seek_end":
-				whence = "io.SeekEnd"
-			}
-			buffer.WriteLine("_, decoder.Err = decoder.Seek(" + goify(instance.Pos, "int64") + ", " + whence + ")")
-
-			if instance.Repeat != "" && instance.RepeatExpr != "" {
-				dataType := instance.dataType()
-				rm := 0
-				if strings.HasPrefix(dataType, "*") {
-					rm = 1
-				} else if strings.HasPrefix(dataType, "[]") {
-					rm = 0
-				}
-				buffer.WriteLine("k." + liName + " = make(" + dataType[rm:] + ", " + goify(instance.RepeatExpr, "") + ")") // TODO: needed?
-
-				buffer.WriteLine("for i := 0; i < " + goify(instance.RepeatExpr, "int") + "; i++ {")
-				buffer.WriteLine("k." + liName + "[i].DecodeAncestors(k, k.Root)")
-				buffer.WriteLine("}")
-			} else {
-				buffer.WriteLine("k." + liName + ".DecodeAncestors(k, k.Root)")
-			}
-
-		}
+	// create inst getter
+	for name, inst := range k.Instances {
+		inst.ID = name
+		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(inst.Name()) + "() (" + inst.DataType() + ") {")
+		buffer.WriteLine("if !k." + inst.Name() + "Set {")
+		buffer.WriteString(k.InitAttr(inst))
+		buffer.WriteLine("k." + inst.Name() + "Set = true")
 		buffer.WriteLine("}")
-		buffer.WriteLine("return k." + liName)
+		buffer.WriteLine("return k." + inst.Name())
 		buffer.WriteLine("}")
 	}
 

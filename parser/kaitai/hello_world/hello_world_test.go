@@ -18,5 +18,5 @@ func TestHelloWorld(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 80, *r.One())
+	assert.EqualValues(t, 80, r.One())
 }

@@ -22,9 +22,9 @@ func TestMBR(t *testing.T) {
 	}
 
 	p0 := mbr.Partitions()[0]
-	assert.EqualValues(t, 128, *p0.LbaStart())
-	assert.EqualValues(t, 34816, *p0.NumSectors())
-	assert.EqualValues(t, 14, *p0.PartitionType())
+	assert.EqualValues(t, 128, p0.LbaStart())
+	assert.EqualValues(t, 34816, p0.NumSectors())
+	assert.EqualValues(t, 14, p0.PartitionType())
 }
 
 func BenchmarkMBR(b *testing.B) {

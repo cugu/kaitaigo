@@ -1,4 +1,4 @@
-package spec
+package repeat_until_s4
 
 import (
 	"os"
@@ -20,6 +20,6 @@ func TestRepeatUntilS4(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, []int32{66, 4919, -251658241, -1}, r.Entries)
-	assert.EqualValues(t, "foobar", r.Afterall)
+	assert.EqualValues(t, []int32{66, 4919, -251658241, -1}, r.Entries())
+	assert.EqualValues(t, "foobar", r.Afterall())
 }

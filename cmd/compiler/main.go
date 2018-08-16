@@ -93,7 +93,7 @@ func createGofile(filepath string, pckg string) error {
 
 	formated, err := imports.Process("", buffer.Bytes(), nil)
 	if err != nil {
-		log.Print("Format error", err)
+		log.Printf("Format error (%s): %s", filepath, err)
 		formated = buffer.Bytes()
 	}
 	err = ioutil.WriteFile(path.Join(pckg, filename+".go"), formated, 0644)

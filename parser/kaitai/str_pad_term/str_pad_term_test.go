@@ -1,4 +1,4 @@
-package spec
+package str_pad_term
 
 import (
 	"os"
@@ -19,8 +19,8 @@ func TestStrPadTerm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, "str1", r.StrPad)
-	assert.EqualValues(t, "str2foo", r.StrTerm)
-	assert.EqualValues(t, "str+++3bar+++", r.StrTermAndPad)
-	assert.EqualValues(t, "str4baz@", r.StrTermInclude)
+	assert.EqualValues(t, "str1", r.StrPad())
+	assert.EqualValues(t, "str2foo", r.StrTerm())
+	assert.EqualValues(t, "str+++3bar+++", r.StrTermAndPad())
+	assert.EqualValues(t, "str4baz@", r.StrTermInclude())
 }

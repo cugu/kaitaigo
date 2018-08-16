@@ -1,4 +1,4 @@
-package spec
+package str_pad_term_empty
 
 import (
 	"os"
@@ -19,8 +19,8 @@ func TestStrPadTermEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, "", r.StrPad)
-	assert.EqualValues(t, "", r.StrTerm)
-	assert.EqualValues(t, "", r.StrTermAndPad)
-	assert.EqualValues(t, "@", r.StrTermInclude)
+	assert.EqualValues(t, "", r.StrPad())
+	assert.EqualValues(t, "", r.StrTerm())
+	assert.EqualValues(t, "", r.StrTermAndPad())
+	assert.EqualValues(t, "@", r.StrTermInclude())
 }

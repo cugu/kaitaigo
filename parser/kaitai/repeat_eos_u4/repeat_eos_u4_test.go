@@ -1,4 +1,4 @@
-package spec
+package repeat_eos_u4
 
 import (
 	"os"
@@ -20,5 +20,5 @@ func TestRepeatEosU4(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, []uint32{0, 66, 66, 2069}, r.Numbers)
+	assert.EqualValues(t, []uint32{0, 66, 66, 2069}, r.Numbers())
 }

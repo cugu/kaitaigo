@@ -1,4 +1,4 @@
-package spec
+package buffered_struct
 
 import (
 	"os"

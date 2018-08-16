@@ -19,8 +19,8 @@ func TestExpr1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 10, *r.LenOf1())
-	assert.EqualValues(t, 8, *r.LenOf1Mod())
-	assert.EqualValues(t, "Some ASC", *r.Str1())
-	assert.EqualValues(t, 8, *r.Str1Len())
+	assert.EqualValues(t, 10, r.LenOf1())
+	assert.EqualValues(t, 8, r.LenOf1Mod())
+	assert.EqualValues(t, "Some ASC", r.Str1())
+	assert.EqualValues(t, 8, r.Str1Len())
 }

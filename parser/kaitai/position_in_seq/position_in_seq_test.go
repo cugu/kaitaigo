@@ -1,4 +1,4 @@
-package spec
+package position_in_seq
 
 import (
 	"os"
@@ -20,5 +20,5 @@ func TestPositionInSeq(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, []uint8{1, 2, 3}, r.Numbers)
+	assert.EqualValues(t, []uint8{1, 2, 3}, r.Numbers())
 }

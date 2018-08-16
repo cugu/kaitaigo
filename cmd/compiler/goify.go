@@ -114,7 +114,7 @@ func isIdentifierPart(tok rune, casting bool) bool {
 }
 
 func goifyIdent(expr, casttype string) string {
-	ret := "*k."
+	ret := "k."
 	var s scanner.Scanner
 	s.Init(strings.NewReader(expr))
 	s.Filename = "example"
@@ -131,7 +131,7 @@ func goifyIdent(expr, casttype string) string {
 		case "[", "]":
 			ret += s.TokenText()
 		case "_parent":
-			ret += "Parent"
+			ret += "Parent()"
 		case "_root":
 			ret += "Root"
 		case "_index":

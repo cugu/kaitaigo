@@ -19,9 +19,9 @@ func TestExpr0(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mustBeF7 := *r.MustBeF7()
+	mustBeF7 := r.MustBeF7()
 	assert.EqualValues(t, 0xf7, mustBeF7)
 
-	mustBeAbc123 := *r.MustBeAbc123()
+	mustBeAbc123 := r.MustBeAbc123()
 	assert.EqualValues(t, "abc123", mustBeAbc123)
 }

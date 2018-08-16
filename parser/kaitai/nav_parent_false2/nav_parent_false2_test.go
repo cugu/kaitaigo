@@ -1,4 +1,4 @@
-package spec
+package nav_parent_false2
 
 import (
 	"os"
@@ -19,5 +19,5 @@ func TestNavParentFalse2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 80, r.Parentless.Foo)
+	assert.EqualValues(t, 80, r.Parentless().Foo())
 }
