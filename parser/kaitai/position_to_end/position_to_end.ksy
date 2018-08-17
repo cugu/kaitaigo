@@ -3,7 +3,9 @@ meta:
   endian: le
 instances:
   index:
-    pos: _io.size - 8
+    # pos: _io.size - 8
+    whence: seek_end
+    pos: -8
     type: index_obj
 types:
   index_obj:

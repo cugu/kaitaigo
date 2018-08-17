@@ -14,7 +14,7 @@ func TestEnum0(t *testing.T) {
 	}
 
 	var h Enum0
-	err = h.Read(s, &h, &h)
+	err = h.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}
