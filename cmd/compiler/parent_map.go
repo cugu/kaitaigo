@@ -13,8 +13,8 @@ func addParent(typeName, parent string) {
 }
 
 func getParent(typeName string) string {
-	if dad, ok := parents[typeName]; ok {
-		return dad
+	if parent, ok := parents[typeName]; ok {
+		return parent
 	}
 	return "runtime.KSYDecoder"
 }

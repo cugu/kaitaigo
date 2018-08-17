@@ -53,7 +53,7 @@ types:
                 digit2 *  1000000 +
                 digit1 * 10000000
       as_str:
-        value:  digit1.to_s + digit2.to_s + digit3.to_s + digit4.to_s + digit5.to_s + digit6.to_s + digit7.to_s + digit8.to_s
+        value:  digit1.to_s + digit2.to_s + digit3.to_s + digit4.to_s + digit5.to_s + digit6.to_s + digit7.to_s + digit8.to_s + ""
 
   rtl_obj:
     seq:

@@ -2,30 +2,49 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
 	"go/format"
+	"go/parser"
+	"go/token"
 	"log"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"text/scanner"
 
-	"github.com/Knetic/govaluate"
 	"github.com/iancoleman/strcase"
 )
 
 var typeMapping = map[string]string{
-	"u1": "runtime.Uint8", "u2": "runtime.Uint16", "u4": "runtime.Uint32", "u8": "runtime.Uint64",
-	"u2le": "runtime.Uint16", "u4le": "runtime.Uint32", "u8le": "runtime.Uint64",
-	"u2be": "runtime.Uint16", "u4be": "runtime.Uint32", "u8be": "runtime.Uint64",
-	"s1": "runtime.Int8", "s2": "runtime.Int16", "s4": "runtime.Int32", "s8": "runtime.Int64",
-	"s2le": "runtime.Int16", "s4le": "runtime.Int32", "s8le": "runtime.Int64",
-	"s2be": "runtime.Int16", "s4be": "runtime.Int32", "s8be": "runtime.Int64",
-	"f4": "runtime.Float32", "f8": "runtime.Float64",
-	"f4le": "runtime.Float32", "f8le": "runtime.Float64",
-	"f4be": "runtime.Float32", "f8be": "runtime.Float64",
-	"str": "runtime.Bytes", "strz": "runtime.Bytes",
-	"": "runtime.Bytes",
+	"u1":   "runtime.Uint8",
+	"u2":   "runtime.Uint16",
+	"u4":   "runtime.Uint32",
+	"u8":   "runtime.Uint64",
+	"u2le": "runtime.Uint16",
+	"u4le": "runtime.Uint32",
+	"u8le": "runtime.Uint64",
+	"u2be": "runtime.Uint16",
+	"u4be": "runtime.Uint32",
+	"u8be": "runtime.Uint64",
+	"s1":   "runtime.Int8",
+	"s2":   "runtime.Int16",
+	"s4":   "runtime.Int32",
+	"s8":   "runtime.Int64",
+	"s2le": "runtime.Int16",
+	"s4le": "runtime.Int32",
+	"s8le": "runtime.Int64",
+	"s2be": "runtime.Int16",
+	"s4be": "runtime.Int32",
+	"s8be": "runtime.Int64",
+	"f4":   "runtime.Float32",
+	"f8":   "runtime.Float64",
+	"f4le": "runtime.Float32",
+	"f8le": "runtime.Float64",
+	"f4be": "runtime.Float32",
+	"f8be": "runtime.Float64",
+	"str":  "runtime.Bytes",
+	"strz": "runtime.Bytes",
+	"":     "runtime.Bytes",
 }
 
 func bitString(s string) string {
@@ -40,46 +59,62 @@ func isInt(expr string) bool {
 	return !strings.Contains(goify(expr, ""), "k.")
 }
 
+func getExprType(expr ast.Expr) (s string, r bool) {
+	// fmt.Printf("%#v\n", expr)
+	ast.Inspect(expr, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.BasicLit:
+			s = expressionTypes[x.Kind]
+			return false
+		case *ast.Ident:
+			s = getKaitaiType(x.Name)
+			return false
+		case *ast.UnaryExpr:
+			s = "runtime.Int64"
+			return false
+		case *ast.BinaryExpr:
+			s = expressionTypes[x.Op]
+			return x.Op == token.ADD || x.Op == token.ADD_ASSIGN
+		case *ast.CallExpr:
+			s, r = getExprType(x.Fun)
+			return r
+		case *ast.SelectorExpr:
+			s, r = getExprType(x.Sel)
+			return r
+		case *ast.FuncType:
+			s, r = getExprType(x.Results.List[0].Type)
+			return r
+		default:
+			return true
+		}
+	})
+	return
+}
+
 func getType(expr string) (t string) {
 	var re = regexp.MustCompile(`\*k.*\(\)`)
 	goExpr := re.ReplaceAllString(goify(expr, ""), `"x"`)
 
-	if goExpr == "\"x\"" {
-		// return interface if only *k...()
-		return "runtime.KSYDecoder"
-	}
+	// fmt.Println()
+	// fmt.Println(goExpr)
 
-	expression, err := govaluate.NewEvaluableExpressionWithFunctions(goExpr, map[string]govaluate.ExpressionFunction{
-		"len": func(arguments ...interface{}) (interface{}, error) {
-			return 0, nil
-		},
-	})
-	if err != nil {
+	exprx, _ := parser.ParseExpr(goExpr)
+	var s string
+	if exprx != nil {
+		s, _ = getExprType(exprx)
+	}
+	switch s {
+	case "int":
 		return "runtime.Int64"
+	case "string":
+		return "runtime.Bytes"
+	case "bool":
+		return "bool"
+	case "":
+		return "runtime.Int64"
+	default:
+		return s
 	}
-
-	if expression != nil {
-		result, _ := expression.Evaluate(nil)
-
-		if reflect.TypeOf(result) == reflect.TypeOf("string") {
-			return "runtime.Bytes"
-		} else if reflect.TypeOf(result) == reflect.TypeOf(float64(0)) {
-			return "runtime.Int64"
-		} else {
-			return "runtime.Int64"
-		}
-	}
-
-	/* var s scanner.Scanner
-	s.Init(strings.NewReader(expr))
-	s.Filename = "example"
-
-	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
-		if tok == scanner.Char || tok == scanner.String || tok == scanner.RawString || tok == scanner.Comment {
-			return "runtime.Bytes"
-		}
-	} */
-	return "runtime.Int64"
 }
 
 func goenum(s string, cast string) string {
@@ -110,7 +145,7 @@ func isIdentifierPart(tok rune, casting bool) bool {
 			return true
 		}
 	}
-	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']'
+	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']' || tok == '"'
 }
 
 func goifyIdent(expr, casttype string) string {
@@ -121,6 +156,9 @@ func goifyIdent(expr, casttype string) string {
 	cast := false
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
 		switch s.TokenText() {
+		case "\"":
+			fmt.Println("....")
+			ret += "\""
 		case ".":
 			ret += "."
 		case "<":
@@ -138,6 +176,8 @@ func goifyIdent(expr, casttype string) string {
 			ret += "index"
 		case "to_i":
 			ret = "int64(" + ret[:len(ret)-1] + ")"
+		case "to_s":
+			ret = "strconv.Itoa(int(" + ret[:len(ret)-1] + "))"
 		case "as":
 			cast = true
 		case "length":

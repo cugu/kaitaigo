@@ -22,10 +22,10 @@ func TestBcdUserTypeBe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 12345678, Ltr.AsInt())
-	assert.EqualValues(t, "12345678", Ltr.AsStr())
-	assert.EqualValues(t, 87654321, Rtl.AsInt())
-	assert.EqualValues(t, "87654321", Rtl.AsStr())
-	assert.EqualValues(t, 123456, LeadingZeroLtr.AsInt())
-	assert.EqualValues(t, "00123456", LeadingZeroLtr.AsStr())
+	assert.EqualValues(t, 12345678, r.Ltr().AsInt())
+	assert.EqualValues(t, "12345678", r.Ltr().AsStr())
+	assert.EqualValues(t, 87654321, r.Rtl().AsInt())
+	assert.EqualValues(t, "87654321", r.Rtl().AsStr())
+	assert.EqualValues(t, 123456, r.LeadingZeroLtr().AsInt())
+	assert.EqualValues(t, "00123456", r.LeadingZeroLtr().AsStr())
 }

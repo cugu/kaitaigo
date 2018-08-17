@@ -75,6 +75,7 @@ type Attribute struct {
 	Value      string   `yaml:"value,omitempty"`
 	Pos        string   `yaml:"pos,omitempty"`
 	Whence     string   `yaml:"whence,omitempty"`
+	Enum       string   `yaml:"enum,omitempty"`
 }
 
 func (k *Attribute) Name() string {
@@ -128,6 +129,11 @@ type Kaitai struct {
 
 func (k *Kaitai) InitAttr(attr Attribute) string {
 	var buffer LineBuffer
+
+	addKaitaiType(attr.Name(), attr.DataType())
+	if attr.Enum != "" {
+		addEnumType(attr.Enum, attr.DataType())
+	}
 
 	if attr.Value != "" {
 		// value instance
@@ -265,7 +271,7 @@ func (k *Kaitai) String(typeName string, parent string, root string) string {
 	for enum, values := range k.Enums {
 		buffer.WriteLine("var " + strcase.ToCamel(enum) + " = struct {")
 		for _, value := range values {
-			buffer.WriteLine(strcase.ToCamel(value) + " int64")
+			buffer.WriteLine(strcase.ToCamel(value) + " " + getEnumType(enum))
 		}
 		buffer.WriteLine("}{")
 		for x, value := range values {

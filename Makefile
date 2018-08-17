@@ -2,7 +2,7 @@ all: clean install code test
 
 clean:
 	@printf '\nClean\n'
-	find parser -name "*.ksy.*" -type f -delete
+	# find parser -name "*.ksy.*" -type f -delete
 
 install:
 	@printf '\n\nInstall\n'
@@ -16,6 +16,9 @@ code:
 	@printf '\n\nCode\n'
 	@# compiler parser/...
 	@compiler `find parser -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@# compiler `find parser/kaitai/type_int_unary_op -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@# compiler `find parser/kaitai/user_type -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@# compiler `find parser/kaitai/position_to_end -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
 test: successful_tests no_tests failing_tests build_failing_tests deprecated_tests
 	@# gotestsum --no-summary errors,failed gitlab.com/cugu/kaitai.go/parser/... 2>/dev/null
@@ -27,6 +30,7 @@ successful_tests:
 	@go test gitlab.com/cugu/kaitai.go/parser/apfs
 	@go test gitlab.com/cugu/kaitai.go/parser/gpt
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/enum_0
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_0
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_1
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/hello_world
@@ -46,6 +50,7 @@ successful_tests:
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/type_int_unary_op
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/user_type
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
+
 
 no_tests:
 	@# go test -v bits_byte_aligned & true
@@ -156,8 +161,6 @@ build_failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bcd_user_type_le & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings_docref & true # [build failed]
-	@go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/enum_0 & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/enum_fancy & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_2 & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_3 & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_array & true # [build failed]
@@ -180,6 +183,7 @@ build_failing_tests:
 deprecated_tests:
 	@# Can be fixed
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types3 & true # accessing nested types is not allowed
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/enum_fancy & true # no fancy enums
 
 	@# Will not be fixed
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/nested_same_name2 # dublicate names are not allowed

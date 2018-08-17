@@ -36,6 +36,9 @@ func createGofile(filepath string, pckg string) error {
 	baseStructSnake := strings.Replace(filename, ".ksy", "", 1)
 	baseStruct := strcase.ToCamel(baseStructSnake)
 
+	enumTypes = map[string]string{}
+	parents = map[string]string{}
+
 	// setup logging
 	logfile, err := os.Create(path.Join(pckg, filename+".log"))
 	if err != nil {
@@ -70,7 +73,6 @@ func createGofile(filepath string, pckg string) error {
 		return errors.Wrap(err, "parse kaitai yaml")
 	}
 
-	parents = map[string]string{}
 	setupMap(&kaitai, baseStruct)
 
 	// write go code
@@ -96,6 +98,7 @@ func createGofile(filepath string, pckg string) error {
 		formated = []byte(buffer.String())
 	}
 	err = ioutil.WriteFile(path.Join(pckg, filename+".go"), formated, 0644)
+
 	if err != nil {
 		return errors.Wrap(err, "create go file")
 	}
