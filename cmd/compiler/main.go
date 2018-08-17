@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -75,26 +74,26 @@ func createGofile(filepath string, pckg string) error {
 	setupMap(&kaitai, baseStruct)
 
 	// write go code
-	var buffer bytes.Buffer
+	var buffer LineBuffer
 
-	buffer.WriteString("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
+	buffer.WriteLine("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
 
 	parts := strings.Split(pckg, "/")
 	lastpart := parts[len(parts)-1]
-	buffer.WriteString("package " + lastpart + "\n")
-	buffer.WriteString("import (\n")
+	buffer.WriteLine("package " + lastpart)
+	buffer.WriteLine("import (")
 	for _, pkg := range []string{"fmt", "io", "os", "log", "gitlab.com/cugu/kaitai.go/runtime"} {
-		buffer.WriteString("\"" + pkg + "\"\n")
+		buffer.WriteLine("\"" + pkg + "\"")
 	}
-	buffer.WriteString(")\n")
-	buffer.WriteString("var decoder *runtime.Decoder\n")
+	buffer.WriteLine(")")
+	buffer.WriteLine("var decoder *runtime.Decoder")
 
-	buffer.WriteString(kaitai.String(baseStruct, baseStruct, baseStruct))
+	buffer.WriteLine(kaitai.String(baseStruct, baseStruct, baseStruct))
 
-	formated, err := imports.Process("", buffer.Bytes(), nil)
+	formated, err := imports.Process("", []byte(buffer.String()), nil)
 	if err != nil {
 		log.Printf("Format error (%s): %s", filepath, err)
-		formated = buffer.Bytes()
+		formated = []byte(buffer.String())
 	}
 	err = ioutil.WriteFile(path.Join(pckg, filename+".go"), formated, 0644)
 	if err != nil {

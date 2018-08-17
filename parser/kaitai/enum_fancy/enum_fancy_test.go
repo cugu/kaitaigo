@@ -1,4 +1,4 @@
-package spec
+package enum_fancy
 
 import (
 	"os"
@@ -19,6 +19,6 @@ func TestEnumFancy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, EnumFancy_Animal__Cat, h.Pet1)
-	assert.Equal(t, EnumFancy_Animal__Chicken, h.Pet2)
+	assert.Equal(t, EnumFancy_Animal__Cat, h.Pet1())
+	assert.Equal(t, EnumFancy_Animal__Chicken, h.Pet2())
 }

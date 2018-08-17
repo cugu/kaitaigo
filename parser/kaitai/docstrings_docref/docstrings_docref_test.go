@@ -1,4 +1,4 @@
-package spec
+package docstrings_docref
 
 import (
 	"os"

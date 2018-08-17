@@ -1,4 +1,4 @@
-package spec
+package default_endian_mod
 
 import (
 	"os"
@@ -19,7 +19,7 @@ func TestDefaultEndianMod(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 0x4b434150, r.Main.One)
-	assert.EqualValues(t, -52947, r.Main.Nest.Two)
-	assert.EqualValues(t, 0x5041434b, r.Main.NestBe.Two)
+	assert.EqualValues(t, 0x4b434150, r.Main().One())
+	assert.EqualValues(t, -52947, r.Main().Nest().Two())
+	assert.EqualValues(t, 0x5041434b, r.Main().NestBe().Two())
 }

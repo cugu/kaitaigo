@@ -1,4 +1,4 @@
-package spec
+package default_big_endian
 
 import (
 	"os"
@@ -19,5 +19,5 @@ func TestDefaultBigEndian(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 0x7000000, r.One)
+	assert.EqualValues(t, 0x7000000, r.One())
 }

@@ -1,4 +1,4 @@
-package spec
+package floating_points
 
 import (
 	"os"

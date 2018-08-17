@@ -1,4 +1,4 @@
-package spec
+package enum_0
 
 import (
 	"os"
@@ -19,6 +19,6 @@ func TestEnum0(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.Equal(t, Enum0_Animal__Cat, h.Pet1)
-	assert.Equal(t, Enum0_Animal__Chicken, h.Pet2)
+	assert.Equal(t, Animal.Cat, h.Pet1())
+	assert.Equal(t, Animal.Chicken, h.Pet2())
 }
