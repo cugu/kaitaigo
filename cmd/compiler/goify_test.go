@@ -54,6 +54,11 @@ func TestGoify(t *testing.T) {
 			Type:   "bool",
 		},
 		Result{
+			Input:  "[0x20, 0x30, 0x40]",
+			GoCode: "[]byte{0x20, 0x30, 0x40}",
+			Type:   "runtime.Int64", // TODO wrong
+		},
+		Result{
 			Input:  "entries_start",
 			GoCode: "k.EntriesStart()",
 			Type:   "runtime.KSYDecoder",

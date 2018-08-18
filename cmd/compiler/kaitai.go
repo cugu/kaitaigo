@@ -111,6 +111,7 @@ type Attribute struct {
 	Whence      string   `yaml:"whence,omitempty"`
 	Enum        string   `yaml:"enum,omitempty"`
 	If          string   `yaml:"if,omitempty"`
+	Process     string   `yaml:"process,omitempty"`
 	// Encoding    string   `yaml:"encoding,omitempty"`
 }
 
@@ -296,7 +297,39 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 	buffer.WriteString(k.InitVar("k."+attr.Name(), attr.DataType(), attr.Size, false))
 
-	// process TODO
+	if attr.Process != "" {
+		process := attr.Process
+		parts := strings.SplitN(process, "(", 2)
+		parameters := []string{}
+
+		cmd := parts[0]
+		if len(parts) > 1 {
+			parts[1] = strings.Trim(parts[1], "()")
+			for _, parameter := range strings.Split(parts[1], ",") {
+				parameter = strings.TrimSpace(parameter)
+				parameter = goExpr(parameter, "")
+				parameters = append(parameters, parameter)
+			}
+		}
+		parameterList := strings.Join(parameters, ", ")
+
+		switch cmd {
+		case "xor":
+			list := "runtime.Bytes{byte(" + parameterList + ")}"
+			if strings.Contains(parameterList, ",") || (strings.HasPrefix(parameterList, "k") && getType(parameterList) != "runtime.Uint8") {
+				list = "runtime.Bytes(" + parameterList + ")"
+			}
+			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessXOR(k." + attr.Name() + ", " + list + ")")
+		case "rol":
+			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessRotateLeft(k." + attr.Name() + ", int(" + parameterList + "))")
+		case "ror":
+			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessRotateRight(k." + attr.Name() + ", int(" + parameterList + "))")
+		case "zlib":
+			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessZlib(k." + attr.Name() + ")")
+		default:
+			buffer.WriteLine("k." + attr.Name() + " = " + goExpr(cmd, "")[2:len(goExpr(cmd, ""))-1] + "k." + attr.Name() + ", " + parameterList + ")")
+		}
+	}
 
 	return
 }

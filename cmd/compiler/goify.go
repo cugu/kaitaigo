@@ -153,7 +153,7 @@ func isIdentifierPart(tok rune, casting bool) bool {
 			return true
 		}
 	}
-	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']' || tok == '"' || tok == '_'
+	return tok == scanner.Ident || tok == '.' || tok == '"' || tok == '_' || tok == '[' || tok == ']'
 }
 
 func goExprIdent(expr, casttype, current_attr string) string {
@@ -162,7 +162,8 @@ func goExprIdent(expr, casttype, current_attr string) string {
 	s.Init(strings.NewReader(expr))
 	s.Filename = "example"
 	cast := false
-	// fmt.Println("inner start")
+	start := true
+	// fmt.Println(expr)
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
 		// fmt.Println("inner", s.TokenText())
 		switch s.TokenText() {
@@ -182,8 +183,18 @@ func goExprIdent(expr, casttype, current_attr string) string {
 		case ">":
 			ret += ")"
 			cast = false
-		case "[", "]":
-			ret += s.TokenText()
+		case "[":
+			if start {
+				ret = "[]byte{"
+			} else {
+				ret += s.TokenText()
+			}
+		case "]":
+			if start {
+				ret = "}"
+			} else {
+				ret += s.TokenText()
+			}
 		case "_parent":
 			ret += "Parent()"
 		case "_root":
@@ -211,6 +222,7 @@ func goExprIdent(expr, casttype, current_attr string) string {
 				ret += "()"
 			}
 		}
+		start = false
 	}
 
 	if casttype != "" {

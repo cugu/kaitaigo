@@ -5,7 +5,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/cugu/kaitai.go/runtime"
 )
+
+func MyCustomFx(data runtime.ByteSlice, key runtime.Uint8, flag bool, someBytes runtime.Bytes) (out runtime.ByteSlice) {
+	if !flag {
+		key = -key
+	}
+	for i := 0; i < len(data); i++ {
+		data[i] = (data[i] + byte(key))
+	}
+	return runtime.ByteSlice(data)
+}
+
+type CustomStruct struct{}
+
+func (n CustomStruct) CustomFx(data runtime.ByteSlice, i int) (out runtime.ByteSlice) {
+	return runtime.ByteSlice("_" + string(data) + "_")
+}
+
+type DeeplyStruct struct{}
+
+func (n DeeplyStruct) Deeply() (c CustomStruct) {
+	return
+}
+
+func Nested() (d DeeplyStruct) {
+	return
+}
 
 func TestProcessCustom(t *testing.T) {
 	f, err := os.Open("../../../testdata/kaitai/process_rotate.bin")
