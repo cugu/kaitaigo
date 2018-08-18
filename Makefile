@@ -159,7 +159,6 @@ no_tests:
 	@# go test -v yaml_ints & true
 
 failing_tests:
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_1
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bytes_pad_term  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_bytes  & true

@@ -16,7 +16,7 @@ func TestBufferedStruct(t *testing.T) {
 	var r BufferedStruct
 	err = r.Decode(f)
 	if err != nil {
-		// t.Fatal(err)
+		t.Fatal(err)
 	}
 
 	assert.EqualValues(t, 0x10, r.Len1())

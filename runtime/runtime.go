@@ -5,12 +5,34 @@ import (
 	"compress/zlib"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/bits"
+	"runtime/debug"
 )
 
 type Decoder struct {
 	io.ReadSeeker
-	Err error
+	err error
+}
+
+func New(reader io.ReadSeeker) *Decoder {
+	return &Decoder{reader, nil}
+}
+
+func (d *Decoder) Err() (err error) {
+	return d.err
+}
+
+func (d *Decoder) SetErr(err error) {
+	if err != nil {
+		log.Println(err)
+		debug.PrintStack()
+		d.err = err
+	}
+}
+
+func (d *Decoder) UnsetErr() {
+	d.err = nil
 }
 
 type KSYDecoder interface {
