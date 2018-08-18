@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestRepeatUntilS4(t *testing.T) {
@@ -21,6 +20,6 @@ func TestRepeatUntilS4(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, []runtime.Int32{66, 4919, -251658241, -1}, r.Entries())
+	assert.EqualValues(t, []int32{66, 4919, -251658241, -1}, r.Entries())
 	assert.EqualValues(t, "foobar", r.Afterall())
 }

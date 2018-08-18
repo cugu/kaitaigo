@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestRepeatUntilComplex(t *testing.T) {
@@ -25,17 +24,17 @@ func TestRepeatUntilComplex(t *testing.T) {
 
 	assert.EqualValues(t, 3, len(r.First()))
 	assert.EqualValues(t, 4, r.First()[0].Count())
-	assert.EqualValues(t, []runtime.Uint8{(0 + 1), 2, 3, 4}, r.First()[0].Values())
+	assert.EqualValues(t, []byte{(0 + 1), 2, 3, 4}, r.First()[0].Values())
 	assert.EqualValues(t, 2, r.First()[1].Count())
-	assert.EqualValues(t, []runtime.Uint8{(0 + 1), 2}, r.First()[1].Values())
+	assert.EqualValues(t, []byte{(0 + 1), 2}, r.First()[1].Values())
 	assert.EqualValues(t, 0, r.First()[2].Count())
 	assert.EqualValues(t, 4, len(r.Second()))
 	assert.EqualValues(t, 6, r.Second()[0].Count())
-	assert.EqualValues(t, []runtime.Uint16{(0 + 1), 2, 3, 4, 5, 6}, r.Second()[0].Values())
+	assert.EqualValues(t, []uint16{(0 + 1), 2, 3, 4, 5, 6}, r.Second()[0].Values())
 	assert.EqualValues(t, 3, r.Second()[1].Count())
-	assert.EqualValues(t, []runtime.Uint16{(0 + 1), 2, 3}, r.Second()[1].Values())
+	assert.EqualValues(t, []uint16{(0 + 1), 2, 3}, r.Second()[1].Values())
 	assert.EqualValues(t, 4, r.Second()[2].Count())
-	assert.EqualValues(t, []runtime.Uint16{(0 + 1), 2, 3, 4}, r.Second()[2].Values())
+	assert.EqualValues(t, []uint16{(0 + 1), 2, 3, 4}, r.Second()[2].Values())
 	assert.EqualValues(t, 0, r.Second()[3].Count())
-	assert.EqualValues(t, []runtime.Uint8{(0 + 102), 111, 111, 98, 97, 114, 0}, r.Third())
+	assert.EqualValues(t, []byte{(0 + 102), 111, 111, 98, 97, 114, 0}, r.Third())
 }

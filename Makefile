@@ -18,11 +18,11 @@ code:
 	@printf '\n\nCode\n'
 	@# compiler parser/...
 	@compiler `find parser -name "*.ksy" -type f | grep -v "/enum_fancy/"`
-	@# compiler `find parser/kaitai/type_int_unary_op -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@# compiler `find parser/kaitai/process_xor_value -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/kaitai/user_type -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/mbr -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/gpt -name "*.ksy" -type f | grep -v "/enum_fancy/"`
-	@# compiler `find parser/kaitai/expr_3 -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@# compiler `find parser/kaitai/expr_1 -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
 test:compiler successful_tests no_tests failing_tests build_failing_tests deprecated_tests
 	@# gotestsum --no-summary errors,failed gitlab.com/cugu/kaitai.go/parser/... 2>/dev/null
@@ -159,6 +159,7 @@ no_tests:
 	@# go test -v yaml_ints & true
 
 failing_tests:
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_1
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bytes_pad_term  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_bytes  & true

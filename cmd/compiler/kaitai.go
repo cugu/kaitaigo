@@ -22,6 +22,8 @@ type Meta struct {
 	FileExtension string `yaml:"fileextension,omitempty"`
 }
 
+var endian = "binary.LittleEndian"
+
 var endianess = map[string]string{
 	"le": "binary.LittleEndian",
 	"be": "binary.BigEndian",
@@ -59,7 +61,7 @@ func (y *TypeKey) String() string {
 	} else if y.TypeSwitch.SwitchOn != "" {
 		return "runtime.KSYDecoder"
 	}
-	return "runtime.Bytes"
+	return "[]byte"
 }
 
 type Contents struct {
@@ -101,6 +103,7 @@ type Attribute struct {
 	ID          string   `yaml:"id,omitempty"`
 	Type        TypeKey  `yaml:"type"`
 	Size        string   `yaml:"size,omitempty"`
+	SizeEos     string   `yaml:"size-eos,omitempty"`
 	Doc         string   `yaml:"doc,omitempty"`
 	Repeat      string   `yaml:"repeat,omitempty"`
 	RepeatExpr  string   `yaml:"repeat-expr,omitempty"`
@@ -121,15 +124,13 @@ func (k *Attribute) Name() string {
 
 func (k *Attribute) ChildType() string {
 	dataType := k.Type.String()
-	if dataType == "runtime.Bytes" { // || dataType == "runtime.String" {
+	if dataType == "[]byte" { // || dataType == "runtime.String" {
 		if k.Value != "" {
 			dataType = getType(k.Value)
 		} else if k.Size != "" {
 			k.Size = strings.Replace(k.Size, "%", "%%", -1)
-			dataType = "runtime.ByteSlice"
 		} else if k.Contents.Len() != 0 {
 			k.Size = fmt.Sprintf("%d", k.Contents.Len())
-			dataType = "runtime.ByteSlice"
 		}
 	}
 	return dataType
@@ -167,23 +168,48 @@ type Type struct {
 	Instances map[string]Attribute      `yaml:"instances,omitempty"`
 }
 
-func (k *Type) InitVar(name, dataType, size string, init bool) string {
+func (k *Type) InitVar(attr Attribute, name, dataType string, init bool) string {
 	var buffer LineBuffer
 
 	// init and parse element
-	if init {
-		if dataType != "runtime.ByteSlice" {
-			buffer.WriteLine("var " + name + " " + dataType)
+	if init && dataType != "[]byte" {
+		buffer.WriteLine("var " + name + " " + dataType)
+	}
+	if dataType == "[]byte" && attr.Size != "" {
+		if init {
+			buffer.WriteLine(name + " := make([]byte, " + goExpr(attr.Size, "") + ")")
 		} else {
-			buffer.WriteLine(name + " := make(runtime.ByteSlice, " + goExpr(size, "int64") + ")")
-		}
-	} else {
-		if dataType == "runtime.ByteSlice" {
-			buffer.WriteLine(name + " = make(runtime.ByteSlice, " + goExpr(size, "int64") + ")")
+			buffer.WriteLine(name + " = make([]byte, " + goExpr(attr.Size, "") + ")")
 		}
 	}
 
-	buffer.WriteLine(name + ".DecodeAncestors(k, k.Root)")
+	if isNative(dataType) {
+		if strings.HasSuffix(attr.ID, "be") {
+			endian = "binary.BigEndian"
+		}
+		if attr.SizeEos != "" {
+			buffer.WriteLine("b, err := ioutil.ReadAll(decoder)")
+			buffer.WriteLine("decoder.Err = err")
+			buffer.WriteLine(name + " = b")
+		} else if attr.Type.Type == "strz" {
+			buffer.WriteLine("pos, err := decoder.Seek(0, io.SeekCurrent)")
+			buffer.WriteLine("if err != nil {decoder.Err = err; return}")
+			buffer.WriteLine("b, err := bufio.NewReader(decoder).ReadBytes(byte(0))")
+			buffer.WriteLine("if err != nil && err != io.EOF {decoder.Err = err; return}")
+			buffer.WriteLine("_, err = decoder.Seek(pos+int64(len(b)), io.SeekStart)")
+			buffer.WriteLine("if err != nil {decoder.Err = err; return}")
+			if init {
+				buffer.WriteLine(name + " := b[:len(b)-1]")
+			} else {
+				buffer.WriteLine(name + " = b[:len(b)-1]")
+			}
+
+		} else {
+			buffer.WriteLine("decoder.Err = binary.Read(decoder, " + endian + ", &" + name + ")")
+		}
+	} else {
+		buffer.WriteLine(name + ".DecodeAncestors(k, k.Root)")
+	}
 
 	return buffer.String()
 }
@@ -208,6 +234,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 	}
 
 	if attr.Pos != "" {
+		fmt.Println(attr.Pos)
 		// save position
 		buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
 		whence := "io.SeekCurrent"
@@ -231,8 +258,8 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 	switch {
 	case attr.Repeat != "":
-		before := "true" // TODO: true is not parsed correctly
-		until := ""      // TODO: true is not parsed correctly
+		before := "true"
+		until := ""
 		fall := false
 		switch attr.Repeat {
 		case "expr":
@@ -258,7 +285,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 			buffer.WriteLine("for i := 0; " + before + "; i++ {")
 
-			buffer.WriteString(k.InitVar("elem", attr.ChildType(), attr.Size, true))
+			buffer.WriteString(k.InitVar(attr, "elem", attr.ChildType(), true))
 
 			// break on error
 			buffer.WriteLine("if decoder.Err != nil {decoder.Err = nil; break}")
@@ -295,7 +322,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		buffer.WriteLine("}")
 	}
 
-	buffer.WriteString(k.InitVar("k."+attr.Name(), attr.DataType(), attr.Size, false))
+	buffer.WriteString(k.InitVar(attr, "k."+attr.Name(), attr.DataType(), false))
 
 	if attr.Process != "" {
 		process := attr.Process
@@ -315,9 +342,9 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 		switch cmd {
 		case "xor":
-			list := "runtime.Bytes{byte(" + parameterList + ")}"
-			if strings.Contains(parameterList, ",") || (strings.HasPrefix(parameterList, "k") && getType(parameterList) != "runtime.Uint8") {
-				list = "runtime.Bytes(" + parameterList + ")"
+			list := "[]byte{byte(" + parameterList + ")}"
+			if strings.Contains(parameterList, ",") || (strings.HasPrefix(parameterList, "k") && getType(parameterList) != "uint8") {
+				list = "[]byte(" + parameterList + ")"
 			}
 			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessXOR(k." + attr.Name() + ", " + list + ")")
 		case "rol":
@@ -325,7 +352,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		case "ror":
 			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessRotateRight(k." + attr.Name() + ", int(" + parameterList + "))")
 		case "zlib":
-			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessZlib(k." + attr.Name() + ")")
+			buffer.WriteLine("k." + attr.Name() + ", decoder.Err = " + "runtime.ProcessZlib(k." + attr.Name() + ")")
 		default:
 			buffer.WriteLine("k." + attr.Name() + " = " + goExpr(cmd, "")[2:len(goExpr(cmd, ""))-1] + "k." + attr.Name() + ", " + parameterList + ")")
 		}
@@ -366,11 +393,11 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker) (err error) {")
 	buffer.WriteLine("if decoder != nil && decoder.Err != nil { return decoder.Err }")
-	endian := "binary.LittleEndian"
+
 	if val, ok := endianess[k.Meta.Endian]; ok {
 		endian = val
 	}
-	buffer.WriteLine("if decoder == nil { decoder = &runtime.Decoder{reader, " + endian + ", nil}; runtime.RTDecoder = decoder }")
+	buffer.WriteLine("if decoder == nil { decoder = &runtime.Decoder{reader, nil}; }")
 	buffer.WriteLine("k.DecodeAncestors(k, k)")
 	buffer.WriteLine("return decoder.Err")
 	buffer.WriteLine("}")

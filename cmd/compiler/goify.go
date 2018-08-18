@@ -16,35 +16,35 @@ import (
 )
 
 var typeMapping = map[string]string{
-	"u1":   "runtime.Uint8",
-	"u2":   "runtime.Uint16",
-	"u4":   "runtime.Uint32",
-	"u8":   "runtime.Uint64",
-	"u2le": "runtime.Uint16Le",
-	"u4le": "runtime.Uint32Le",
-	"u8le": "runtime.Uint64Le",
-	"u2be": "runtime.Uint16Be",
-	"u4be": "runtime.Uint32Be",
-	"u8be": "runtime.Uint64Be",
-	"s1":   "runtime.Int8",
-	"s2":   "runtime.Int16",
-	"s4":   "runtime.Int32",
-	"s8":   "runtime.Int64",
-	"s2le": "runtime.Int16Le",
-	"s4le": "runtime.Int32Le",
-	"s8le": "runtime.Int64Le",
-	"s2be": "runtime.Int16Be",
-	"s4be": "runtime.Int32Be",
-	"s8be": "runtime.Int64Be",
-	"f4":   "runtime.Float32",
-	"f8":   "runtime.Float64",
-	"f4le": "runtime.Float32Le",
-	"f8le": "runtime.Float64Le",
-	"f4be": "runtime.Float32Be",
-	"f8be": "runtime.Float64Be",
-	"str":  "runtime.Bytes",
-	"strz": "runtime.BytesZ",
-	"":     "runtime.Bytes",
+	"u1":   "uint8",
+	"u2":   "uint16",
+	"u4":   "uint32",
+	"u8":   "uint64",
+	"u2le": "uint16",
+	"u4le": "uint32",
+	"u8le": "uint64",
+	"u2be": "uint16",
+	"u4be": "uint32",
+	"u8be": "uint64",
+	"s1":   "int8",
+	"s2":   "int16",
+	"s4":   "int32",
+	"s8":   "int64",
+	"s2le": "int16",
+	"s4le": "int32",
+	"s8le": "int64",
+	"s2be": "int16",
+	"s4be": "int32",
+	"s8be": "int64",
+	"f4":   "float32",
+	"f8":   "float64",
+	"f4le": "float32",
+	"f8le": "float64",
+	"f4be": "float32",
+	"f8be": "float64",
+	"str":  "[]byte",
+	"strz": "[]byte",
+	"":     "[]byte",
 }
 
 func bitString(s string) string {
@@ -70,14 +70,18 @@ func getExprType(expr ast.Expr) (s string, r bool) {
 			if x.Name == "true" || x.Name == "false" {
 				s = "bool"
 			} else {
-				s = getKaitaiType(x.Name)
+				if isNative(x.Name) {
+					s = x.Name
+				} else {
+					s = getKaitaiType(x.Name)
+				}
 			}
 			return false
 		case *ast.UnaryExpr:
 			if x.Op == token.NOT {
 				s = "bool"
 			} else {
-				s = "runtime.Int64"
+				s = "int64"
 			}
 			return false
 		case *ast.BinaryExpr:
@@ -111,15 +115,16 @@ func getType(expr string) (t string) {
 	if exprx != nil {
 		s, _ = getExprType(exprx)
 	}
+	// fmt.Println("s", s)
 	switch s {
 	case "int":
-		return "runtime.Int64"
+		return "int64"
 	case "string":
-		return "runtime.Bytes"
+		return "[]byte"
 	case "bool":
 		return "bool"
 	case "":
-		return "runtime.Int64"
+		return "[]byte"
 	default:
 		return s
 	}

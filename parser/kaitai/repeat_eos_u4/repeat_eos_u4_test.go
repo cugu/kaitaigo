@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestRepeatEosU4(t *testing.T) {
@@ -21,5 +20,5 @@ func TestRepeatEosU4(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, []runtime.Uint32{0, 66, 66, 2069}, r.Numbers())
+	assert.EqualValues(t, []uint32{0, 66, 66, 2069}, r.Numbers())
 }

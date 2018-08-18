@@ -5,23 +5,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/cugu/kaitai.go/runtime"
 )
 
-func MyCustomFx(data runtime.ByteSlice, key runtime.Uint8, flag bool, someBytes runtime.Bytes) (out runtime.ByteSlice) {
+func MyCustomFx(data []byte, key byte, flag bool, someBytes []byte) (out []byte) {
 	if !flag {
 		key = -key
 	}
 	for i := 0; i < len(data); i++ {
 		data[i] = (data[i] + byte(key))
 	}
-	return runtime.ByteSlice(data)
+	return []byte(data)
 }
 
 type CustomStruct struct{}
 
-func (n CustomStruct) CustomFx(data runtime.ByteSlice, i int) (out runtime.ByteSlice) {
-	return runtime.ByteSlice("_" + string(data) + "_")
+func (n CustomStruct) CustomFx(data []byte, i int) (out []byte) {
+	return []byte("_" + string(data) + "_")
 }
 
 type DeeplyStruct struct{}

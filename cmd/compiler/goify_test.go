@@ -15,24 +15,8 @@ type Result struct {
 func TestGoify(t *testing.T) {
 
 	kaitaiTypes = map[string]string{
-		"Itoa":    "runtime.Bytes",
-		"len":     "runtime.Int64",
-		"bool":    "bool",
-		"string":  "runtime.Bytes",
-		"int":     "runtime.Int32",
-		"int8":    "runtime.Int8",
-		"int16":   "runtime.Int16",
-		"int32":   "runtime.Int32",
-		"int64":   "runtime.Int64",
-		"uint":    "runtime.Uint",
-		"uint8":   "runtime.Uint8",
-		"uint16":  "runtime.Uint16",
-		"uint32":  "runtime.Uint32",
-		"uint64":  "runtime.Uint64",
-		"byte":    "runtime.Byte",
-		"rune":    "runtime.Byte",
-		"float32": "runtime.Float32",
-		"float64": "runtime.Float64",
+		"Itoa": "[]byte",
+		"len":  "int64",
 	}
 
 	tests := []Result{
@@ -56,7 +40,7 @@ func TestGoify(t *testing.T) {
 		Result{
 			Input:  "[0x20, 0x30, 0x40]",
 			GoCode: "[]byte{0x20, 0x30, 0x40}",
-			Type:   "runtime.Int64", // TODO wrong
+			Type:   "int64", // TODO wrong
 		},
 		Result{
 			Input:  "entries_start",
@@ -66,12 +50,12 @@ func TestGoify(t *testing.T) {
 		Result{
 			Input:  "entries_start.to_s",
 			GoCode: "strconv.Itoa(int(k.EntriesStart()))",
-			Type:   "runtime.Bytes",
+			Type:   "[]byte",
 		},
 		Result{
 			Input:  "entries_start * _root.sector_size",
 			GoCode: "k.EntriesStart() * k.Root.SectorSize()",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "_root.block0.body.as<container_superblock>.block_size",
@@ -81,7 +65,7 @@ func TestGoify(t *testing.T) {
 		Result{
 			Input:  "(xp_desc_base + xp_desc_index) * _root.block_size",
 			GoCode: "(k.XpDescBase() + k.XpDescIndex()) * k.Root.BlockSize()",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "(_parent.node_type & 4) == 0",
@@ -90,28 +74,28 @@ func TestGoify(t *testing.T) {
 		},
 		Result{
 			Input:  "(_parent.level > 0) ? 256 : key_hdr.kind.to_i",
-			GoCode: "func()runtime.Int64{if (k.Parent().Level() > 0){return 256}else{return int64(k.KeyHdr().Kind())}}()",
-			Type:   "runtime.Int64",
+			GoCode: "func()int64{if (k.Parent().Level() > 0){return 256}else{return int64(k.KeyHdr().Kind())}}()",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "_root.block_size - data_offset - 40 * (_parent.node_type & 1)",
 			GoCode: "k.Root.BlockSize() - k.DataOffset() - 40*(k.Parent().NodeType()&1)",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "key_low + ((key_high & 0x0FFFFFFF) << 32)",
 			GoCode: "k.KeyLow() + ((k.KeyHigh() & 0x0FFFFFFF) << 32)",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "xf_header[_index].length + ((8 - xf_header[_index].length) % 8)",
 			GoCode: "len(k.XfHeader()[index]) + ((8 - len(k.XfHeader()[index])) % 8)",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "\"test\"",
 			GoCode: "\"test\"",
-			Type:   "runtime.Bytes",
+			Type:   "[]byte",
 		},
 		Result{
 			Input:  "2 < 1",
@@ -121,34 +105,34 @@ func TestGoify(t *testing.T) {
 		Result{
 			Input:  "2 + 1",
 			GoCode: "2 + 1",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "-9837 % 13",
 			GoCode: "-9837 % 13",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "-9837",
 			GoCode: "-9837",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 		Result{
 			Input:  "\"test\" + \"test\"",
 			GoCode: "\"test\" + \"test\"",
-			Type:   "runtime.Bytes",
+			Type:   "[]byte",
 		},
 		Result{
 			Input:  "str1.length",
 			GoCode: "len(k.Str1())",
-			Type:   "runtime.Int64",
+			Type:   "int64",
 		},
 	}
 
 	for _, result := range tests {
 		assert.EqualValues(t, result.GoCode, goExpr(result.Input, ""))
 		ty := getType(result.Input)
-		// fmt.Println("cmp", result.Type, ty)
+		// fmt.Println("cmp", result.Type, ty, goExpr(result.Input, ""))
 		assert.EqualValues(t, result.Type, ty)
 	}
 }
