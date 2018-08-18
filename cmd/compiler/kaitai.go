@@ -9,17 +9,17 @@ import (
 )
 
 type TypeSwitch struct {
-	SwitchOn string          `yaml:"switch-on,omitempty"`
-	Cases    map[string]Type `yaml:"cases,omitempty"`
+	SwitchOn string             `yaml:"switch-on,omitempty"`
+	Cases    map[string]TypeKey `yaml:"cases,omitempty"`
 }
 
-type Type struct {
+type TypeKey struct {
 	Type       string
 	TypeSwitch TypeSwitch
 	CustomType bool
 }
 
-func (y *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (y *TypeKey) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	err := unmarshal(&y.Type)
 	if err != nil {
 		err = unmarshal(&y.TypeSwitch)
@@ -31,7 +31,7 @@ func (y *Type) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-func (y *Type) String() string {
+func (y *TypeKey) String() string {
 	if y.Type != "" {
 		if val, ok := typeMapping[y.Type]; ok {
 			return val
@@ -44,29 +44,43 @@ func (y *Type) String() string {
 }
 
 type Contents struct {
-	Content []interface{}
+	ContentString string
+	ContentArray  []interface{}
+	TypeSwitch    TypeSwitch
 }
 
 func (y *Contents) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	return unmarshal(&y.Content)
+	err := unmarshal(&y.ContentString)
+	if err != nil {
+		err := unmarshal(&y.ContentArray)
+		if err != nil {
+			err = unmarshal(&y.TypeSwitch)
+			return err
+		}
+		return err
+	}
+	return nil
 }
 
 func (y *Contents) Len() int {
-	if len(y.Content) == 0 {
+	if len(y.ContentString) != 0 {
+		return len(y.ContentString)
+	}
+	if len(y.ContentArray) == 0 {
 		return 0
 	}
-	switch v := y.Content[0].(type) {
+	switch v := y.ContentArray[0].(type) {
 	case string:
 		return len(v)
 	default:
-		return len(y.Content)
+		return len(y.ContentArray)
 	}
 }
 
 type Attribute struct {
 	Category   string   `-`
 	ID         string   `yaml:"id,omitempty"`
-	Type       Type     `yaml:"type"`
+	Type       TypeKey  `yaml:"type"`
 	Size       string   `yaml:"size,omitempty"`
 	Doc        string   `yaml:"doc,omitempty"`
 	Repeat     string   `yaml:"repeat,omitempty"`
@@ -100,7 +114,7 @@ func (k *Attribute) DataType() string {
 
 	if k.Repeat != "" && k.RepeatExpr != "" {
 		if isInt(k.RepeatExpr) {
-			dataType = "[" + goify(k.RepeatExpr, "") + "]" + dataType
+			dataType = "[" + goExpr(k.RepeatExpr, "") + "]" + dataType
 		} else {
 			dataType = "[]" + dataType
 		}
@@ -119,28 +133,23 @@ func (k *Attribute) String() string {
 	return k.Name() + " " + k.DataType() + "`ks:\"" + k.ID + "," + k.Category + "\"`" + doc
 }
 
-type Kaitai struct {
-	Types     map[string]Kaitai         `yaml:"types,omitempty"`
+type Type struct {
+	Types     map[string]Type           `yaml:"types,omitempty"`
 	Seq       []Attribute               `yaml:"seq,omitempty"`
 	Enums     map[string]map[int]string `yaml:"enums,omitempty"`
 	Doc       string                    `yaml:"doc,omitempty"`
 	Instances map[string]Attribute      `yaml:"instances,omitempty"`
 }
 
-func (k *Kaitai) InitAttr(attr Attribute) string {
+func (k *Type) InitAttr(attr Attribute) string {
 	var buffer LineBuffer
-
-	addKaitaiType(attr.Name(), attr.DataType())
-	if attr.Enum != "" {
-		addEnumType(attr.Enum, attr.DataType())
-	}
 
 	if attr.Value != "" {
 		// value instance
-		if attr.DataType() == "runtime.KSYDecoder" {
-			buffer.WriteLine("k." + attr.Name() + " = " + goify(attr.Value, ""))
+		if attr.DataType() == "runtime.KSYDecoder" || strings.HasPrefix(attr.DataType(), "*") {
+			buffer.WriteLine("k." + attr.Name() + " = " + goExpr(attr.Value, ""))
 		} else {
-			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "(" + goify(attr.Value, "") + ")")
+			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "(" + goExpr(attr.Value, "") + ")")
 		}
 		return buffer.String()
 	}
@@ -154,19 +163,19 @@ func (k *Kaitai) InitAttr(attr Attribute) string {
 		case "seek_end":
 			whence = "io.SeekEnd"
 		}
-		buffer.WriteLine("_, decoder.Err = decoder.Seek(" + goify(attr.Pos, "int64") + ", " + whence + ")")
+		buffer.WriteLine("_, decoder.Err = decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
 	}
 
 	switch {
 	case attr.DataType() == "runtime.ByteSlice":
 		// byteslice
-		buffer.WriteLine("k." + attr.Name() + " = make(runtime.ByteSlice, " + goify(attr.RepeatExpr, "int64") + ")")
+		buffer.WriteLine("k." + attr.Name() + " = make(runtime.ByteSlice, " + goExpr(attr.RepeatExpr, "int64") + ")")
 	case attr.Repeat != "" && attr.RepeatExpr != "":
 		// array
 		if strings.HasPrefix(attr.DataType(), "[]") {
-			buffer.WriteLine("k." + attr.Name() + " = make(" + attr.DataType() + ", " + goify(attr.RepeatExpr, "") + ")")
+			buffer.WriteLine("k." + attr.Name() + " = make(" + attr.DataType() + ", " + goExpr(attr.RepeatExpr, "") + ")")
 		}
-		buffer.WriteLine("for i := 0; i < int(" + goify(attr.RepeatExpr, "") + "); i += 1 {")
+		buffer.WriteLine("for i := 0; i < int(" + goExpr(attr.RepeatExpr, "") + "); i += 1 {")
 		buffer.WriteLine("k." + attr.Name() + "[i].DecodeAncestors(k, k.Root)")
 		buffer.WriteLine("}")
 		return buffer.String()
@@ -175,7 +184,7 @@ func (k *Kaitai) InitAttr(attr Attribute) string {
 		// init variable
 		buffer.WriteLine("k." + attr.Name() + " = &" + attr.DataType()[1:] + "{}")
 	case attr.Type.TypeSwitch.SwitchOn != "":
-		buffer.WriteLine("switch " + goify(attr.Type.TypeSwitch.SwitchOn, "int64") + " {")
+		buffer.WriteLine("switch " + goExpr(attr.Type.TypeSwitch.SwitchOn, "int64") + " {")
 		for casevalue, casetype := range attr.Type.TypeSwitch.Cases {
 			buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
 			buffer.WriteLine("k." + attr.Name() + " = &" + casetype.String() + "{}")
@@ -188,7 +197,7 @@ func (k *Kaitai) InitAttr(attr Attribute) string {
 
 }
 
-func (k *Kaitai) String(typeName string, parent string, root string) string {
+func (k *Type) String(typeName string, parent string, root string) string {
 	var buffer LineBuffer
 
 	// print doc string

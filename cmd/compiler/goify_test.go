@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -84,6 +83,11 @@ func TestGoify(t *testing.T) {
 			Type:   "runtime.Int64",
 		},
 		Result{
+			Input:  "-9837 % 13",
+			GoCode: "-9837 % 13",
+			Type:   "runtime.Int64",
+		},
+		Result{
 			Input:  "\"test\" + \"test\"",
 			GoCode: "\"test\" + \"test\"",
 			Type:   "runtime.Bytes",
@@ -96,9 +100,9 @@ func TestGoify(t *testing.T) {
 	}
 
 	for _, result := range tests {
-		assert.EqualValues(t, result.GoCode, goify(result.Input, ""))
+		assert.EqualValues(t, result.GoCode, goExpr(result.Input, ""))
 		ty := getType(result.Input)
-		fmt.Println("cmp", result.Type, ty)
+		// fmt.Println("cmp", result.Type, ty)
 		assert.EqualValues(t, result.Type, ty)
 	}
 }

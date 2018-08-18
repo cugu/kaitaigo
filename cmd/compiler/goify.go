@@ -20,28 +20,28 @@ var typeMapping = map[string]string{
 	"u2":   "runtime.Uint16",
 	"u4":   "runtime.Uint32",
 	"u8":   "runtime.Uint64",
-	"u2le": "runtime.Uint16",
-	"u4le": "runtime.Uint32",
-	"u8le": "runtime.Uint64",
-	"u2be": "runtime.Uint16",
-	"u4be": "runtime.Uint32",
-	"u8be": "runtime.Uint64",
+	"u2le": "runtime.Uint16Le",
+	"u4le": "runtime.Uint32Le",
+	"u8le": "runtime.Uint64Le",
+	"u2be": "runtime.Uint16Be",
+	"u4be": "runtime.Uint32Be",
+	"u8be": "runtime.Uint64Be",
 	"s1":   "runtime.Int8",
 	"s2":   "runtime.Int16",
 	"s4":   "runtime.Int32",
 	"s8":   "runtime.Int64",
-	"s2le": "runtime.Int16",
-	"s4le": "runtime.Int32",
-	"s8le": "runtime.Int64",
-	"s2be": "runtime.Int16",
-	"s4be": "runtime.Int32",
-	"s8be": "runtime.Int64",
+	"s2le": "runtime.Int16Le",
+	"s4le": "runtime.Int32Le",
+	"s8le": "runtime.Int64Le",
+	"s2be": "runtime.Int16Be",
+	"s4be": "runtime.Int32Be",
+	"s8be": "runtime.Int64Be",
 	"f4":   "runtime.Float32",
 	"f8":   "runtime.Float64",
-	"f4le": "runtime.Float32",
-	"f8le": "runtime.Float64",
-	"f4be": "runtime.Float32",
-	"f8be": "runtime.Float64",
+	"f4le": "runtime.Float32Le",
+	"f8le": "runtime.Float64Le",
+	"f4be": "runtime.Float32Be",
+	"f8be": "runtime.Float64Be",
 	"str":  "runtime.Bytes",
 	"strz": "runtime.Bytes",
 	"":     "runtime.Bytes",
@@ -56,7 +56,7 @@ func bitString(s string) string {
 }
 
 func isInt(expr string) bool {
-	return !strings.Contains(goify(expr, ""), "k.")
+	return !strings.Contains(goExpr(expr, ""), "k.")
 }
 
 func getExprType(expr ast.Expr) (s string, r bool) {
@@ -93,7 +93,7 @@ func getExprType(expr ast.Expr) (s string, r bool) {
 
 func getType(expr string) (t string) {
 	var re = regexp.MustCompile(`\*k.*\(\)`)
-	goExpr := re.ReplaceAllString(goify(expr, ""), `"x"`)
+	goExpr := re.ReplaceAllString(goExpr(expr, ""), `"x"`)
 
 	// fmt.Println()
 	// fmt.Println(goExpr)
@@ -148,7 +148,7 @@ func isIdentifierPart(tok rune, casting bool) bool {
 	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']' || tok == '"'
 }
 
-func goifyIdent(expr, casttype string) string {
+func goExprIdent(expr, casttype string) string {
 	ret := "k."
 	var s scanner.Scanner
 	s.Init(strings.NewReader(expr))
@@ -157,7 +157,7 @@ func goifyIdent(expr, casttype string) string {
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
 		switch s.TokenText() {
 		case "\"":
-			fmt.Println("....")
+			// fmt.Println("....")
 			ret += "\""
 		case ".":
 			ret += "."
@@ -204,7 +204,7 @@ func goifyIdent(expr, casttype string) string {
 
 }
 
-func goify(expr, casttype string) string {
+func goExpr(expr, casttype string) string {
 
 	// replace binary values
 	re := regexp.MustCompile("0[bB][0-9]+")
@@ -220,7 +220,7 @@ func goify(expr, casttype string) string {
 
 		// handle identifier chain
 		if !isIdentifierPart(tok, casting) && identifier != "" {
-			ret += " " + goifyIdent(identifier, casttype)
+			ret += " " + goExprIdent(identifier, casttype)
 			identifier = ""
 		}
 
@@ -240,10 +240,10 @@ func goify(expr, casttype string) string {
 			identifier += identifierPart
 		case tok == '?':
 			parts := strings.SplitN(expr, "?", 2)
-			check := goify(parts[0], "")
+			check := goExpr(parts[0], "")
 			cases := strings.SplitN(parts[1], ":", 2)
-			ifvalue := goify(cases[0], "")
-			elsevalue := goify(cases[1], "")
+			ifvalue := goExpr(cases[0], "")
+			elsevalue := goExpr(cases[1], "")
 			return fmt.Sprintf("func()int64{if %s{return %s}else{return %s}}()", check, ifvalue, elsevalue)
 		default:
 			ret += s.TokenText()
@@ -252,7 +252,7 @@ func goify(expr, casttype string) string {
 
 	// handle identifier chain
 	if identifier != "" {
-		ret += " " + goifyIdent(identifier, casttype)
+		ret += " " + goExprIdent(identifier, casttype)
 	}
 
 	// remove whitespace and format code

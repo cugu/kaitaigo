@@ -26,7 +26,7 @@ func init() {
 }
 
 func addKaitaiType(kaitaiName, kaitaiType string) {
-	if _, ok := kaitaiTypes[kaitaiName]; !ok {
+	if val, ok := kaitaiTypes[kaitaiName]; !ok || val == "runtime.KSYDecoder" {
 		kaitaiTypes[kaitaiName] = kaitaiType
 	}
 }

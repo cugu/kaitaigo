@@ -67,13 +67,16 @@ func createGofile(filepath string, pckg string) error {
 	}
 
 	// parse kaitai
-	kaitai := Kaitai{}
+	kaitai := Type{}
 	err = YAMLUnmarshal("kaitai", source, &kaitai, path.Join(pckg, filename))
 	if err != nil {
 		return errors.Wrap(err, "parse kaitai yaml")
 	}
 
 	setupMap(&kaitai, baseStruct)
+	// fmt.Printf("%#v\n", kaitaiTypes)
+	setupMap(&kaitai, baseStruct)
+	// fmt.Printf("%#v\n", kaitaiTypes)
 
 	// write go code
 	var buffer LineBuffer
