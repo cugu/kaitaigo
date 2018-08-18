@@ -112,11 +112,11 @@ func (k *Attribute) DataType() string {
 		}
 	}
 
-	if k.Repeat != "" && k.RepeatExpr != "" {
-		if isInt(k.RepeatExpr) {
-			dataType = "[" + goExpr(k.RepeatExpr, "") + "]" + dataType
-		} else {
+	if k.Repeat != "" {
+		if !isInt(k.RepeatExpr) || k.Repeat == "eos" {
 			dataType = "[]" + dataType
+		} else {
+			dataType = "[" + goExpr(k.RepeatExpr, "") + "]" + dataType
 		}
 	} else if k.Type.CustomType {
 		dataType = "*" + dataType
@@ -170,15 +170,33 @@ func (k *Type) InitAttr(attr Attribute) string {
 	case attr.DataType() == "runtime.ByteSlice":
 		// byteslice
 		buffer.WriteLine("k." + attr.Name() + " = make(runtime.ByteSlice, " + goExpr(attr.RepeatExpr, "int64") + ")")
-	case attr.Repeat != "" && attr.RepeatExpr != "":
-		// array
-		if strings.HasPrefix(attr.DataType(), "[]") {
-			buffer.WriteLine("k." + attr.Name() + " = make(" + attr.DataType() + ", " + goExpr(attr.RepeatExpr, "") + ")")
+	case attr.Repeat != "":
+		switch attr.Repeat {
+		case "expr":
+			if attr.RepeatExpr == "" {
+				panic("RepeatExpr is missing")
+			}
+			// array
+			if strings.HasPrefix(attr.DataType(), "[]") {
+				buffer.WriteLine("k." + attr.Name() + " = make(" + attr.DataType() + ", " + goExpr(attr.RepeatExpr, "") + ")")
+			}
+			buffer.WriteLine("for i := 0; i < int(" + goExpr(attr.RepeatExpr, "") + "); i += 1 {")
+			buffer.WriteLine("k." + attr.Name() + "[i].DecodeAncestors(k, k.Root)")
+			buffer.WriteLine("}")
+			return buffer.String()
+		case "eos":
+			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "{}")
+			buffer.WriteLine("for i := 0; true; i++ {")
+			buffer.WriteLine("var elem " + attr.DataType()[2:])
+			buffer.WriteLine("elem.DecodeAncestors(k, k.Root)")
+			buffer.WriteLine("if decoder.Err != nil {")
+			buffer.WriteLine("decoder.Err = nil")
+			buffer.WriteLine("break")
+			buffer.WriteLine("}")
+			buffer.WriteLine("k." + attr.Name() + " = append(k." + attr.Name() + ", elem)")
+			buffer.WriteLine("}")
+			return buffer.String()
 		}
-		buffer.WriteLine("for i := 0; i < int(" + goExpr(attr.RepeatExpr, "") + "); i += 1 {")
-		buffer.WriteLine("k." + attr.Name() + "[i].DecodeAncestors(k, k.Root)")
-		buffer.WriteLine("}")
-		return buffer.String()
 	case attr.Type.CustomType:
 		// custom struct
 		// init variable

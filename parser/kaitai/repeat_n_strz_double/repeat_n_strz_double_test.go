@@ -23,6 +23,6 @@ func TestRepeatNStrzDouble(t *testing.T) {
 	}
 
 	assert.EqualValues(t, 2, r.Qty())
-	assert.EqualValues(t, []string{"foo"}, r.Lines1())
-	assert.EqualValues(t, []string{"bar"}, r.Lines2())
+	assert.EqualValues(t, "foo", r.Lines1()[0])
+	assert.EqualValues(t, "bar", r.Lines2()[0])
 }
