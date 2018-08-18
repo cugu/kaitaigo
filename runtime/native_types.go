@@ -1,7 +1,9 @@
 package runtime
 
 import (
+	"bufio"
 	"encoding/binary"
+	"io"
 	"io/ioutil"
 )
 
@@ -22,12 +24,38 @@ func (v *Bytes) DecodeAncestors(parent interface{}, root interface{}) {
 	if RTDecoder.Err != nil {
 		return
 	}
-	lv, err := ioutil.ReadAll(RTDecoder)
+	b, err := ioutil.ReadAll(RTDecoder)
 	if err != nil {
 		RTDecoder.Err = err
 		return
 	}
-	*v = lv
+	*v = b
+}
+
+type BytesZ []byte
+
+func (v *BytesZ) DecodeAncestors(parent interface{}, root interface{}) {
+	if RTDecoder.Err != nil {
+		return
+	}
+	pos, err := RTDecoder.Seek(0, io.SeekCurrent)
+	if err != nil {
+		RTDecoder.Err = err
+		return
+	}
+	b, err := bufio.NewReader(RTDecoder).ReadBytes(byte(0))
+	if err != nil && err != io.EOF {
+		RTDecoder.Err = err
+		return
+	}
+	_, err = RTDecoder.Seek(pos+int64(len(b)), io.SeekStart)
+	if err != nil {
+		RTDecoder.Err = err
+		return
+	}
+	if len(b) != 0 {
+		*v = b[:len(b)-1]
+	}
 }
 
 type ByteSlice []byte

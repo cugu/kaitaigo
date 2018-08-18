@@ -43,7 +43,7 @@ var typeMapping = map[string]string{
 	"f4be": "runtime.Float32Be",
 	"f8be": "runtime.Float64Be",
 	"str":  "runtime.Bytes",
-	"strz": "runtime.Bytes",
+	"strz": "runtime.BytesZ",
 	"":     "runtime.Bytes",
 }
 

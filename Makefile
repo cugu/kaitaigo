@@ -54,6 +54,7 @@ successful_tests:
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/user_type
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/integers
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz # fix tests
 
 no_tests:
 	@# go test -v bits_byte_aligned & true
@@ -147,7 +148,6 @@ failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor_const  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor_value  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_eos_u4  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz_double  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_encodings  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_s4  & true
@@ -163,7 +163,6 @@ build_failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bcd_user_type_le & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings_docref & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_3 & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_array & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_bytes_cmp & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_io_pos & true # [build failed]
@@ -187,6 +186,7 @@ deprecated_tests:
 
 	@# Hard to fix
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_mod  & true # -2 % 8 => -2
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_3 & true # string compare
 
 	@# Will not be fixed
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/nested_same_name2 # dublicate names are not allowed
