@@ -145,10 +145,10 @@ func isIdentifierPart(tok rune, casting bool) bool {
 			return true
 		}
 	}
-	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']' || tok == '"'
+	return tok == scanner.Ident || tok == '.' || tok == '[' || tok == ']' || tok == '"' || tok == '_'
 }
 
-func goExprIdent(expr, casttype string) string {
+func goExprIdent(expr, casttype, current_attr string) string {
 	ret := "k."
 	var s scanner.Scanner
 	s.Init(strings.NewReader(expr))
@@ -156,6 +156,8 @@ func goExprIdent(expr, casttype string) string {
 	cast := false
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
 		switch s.TokenText() {
+		case "_":
+			ret = ret[:len(ret)-1] + "." + current_attr
 		case "\"":
 			// fmt.Println("....")
 			ret += "\""
@@ -205,7 +207,10 @@ func goExprIdent(expr, casttype string) string {
 }
 
 func goExpr(expr, casttype string) string {
+	return goExprAttr(expr, casttype, "")
+}
 
+func goExprAttr(expr, casttype, current_attr string) string {
 	// replace binary values
 	re := regexp.MustCompile("0[bB][0-9]+")
 	expr = re.ReplaceAllStringFunc(expr, bitString)
@@ -220,7 +225,7 @@ func goExpr(expr, casttype string) string {
 
 		// handle identifier chain
 		if !isIdentifierPart(tok, casting) && identifier != "" {
-			ret += " " + goExprIdent(identifier, casttype)
+			ret += " " + goExprIdent(identifier, casttype, current_attr)
 			identifier = ""
 		}
 
@@ -252,7 +257,7 @@ func goExpr(expr, casttype string) string {
 
 	// handle identifier chain
 	if identifier != "" {
-		ret += " " + goExprIdent(identifier, casttype)
+		ret += " " + goExprIdent(identifier, casttype, current_attr)
 	}
 
 	// remove whitespace and format code

@@ -8,6 +8,25 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+type Meta struct {
+	ID            string `yaml:"id,omitempty"`
+	Title         string `yaml:"title,omitempty"`
+	Application   string `yaml:"application,omitempty"`
+	Imports       string `yaml:"imports,omitempty"`
+	Encoding      string `yaml:"encoding,omitempty"`
+	Endian        string `yaml:"endian,omitempty"`
+	KSVersion     string `yaml:"ks-version,omitempty"`
+	KSDebug       string `yaml:"ks-debug,omitempty"`
+	KSOpaqueTypes string `yaml:"ksopaquetypes,omitempty"`
+	Licence       string `yaml:"licence,omitempty"`
+	FileExtension string `yaml:"fileextension,omitempty"`
+}
+
+var endianess = map[string]string{
+	"le": "binary.LittleEndian",
+	"be": "binary.BigEndian",
+}
+
 type TypeSwitch struct {
 	SwitchOn string             `yaml:"switch-on,omitempty"`
 	Cases    map[string]TypeKey `yaml:"cases,omitempty"`
@@ -78,40 +97,45 @@ func (y *Contents) Len() int {
 }
 
 type Attribute struct {
-	Category   string   `-`
-	ID         string   `yaml:"id,omitempty"`
-	Type       TypeKey  `yaml:"type"`
-	Size       string   `yaml:"size,omitempty"`
-	Doc        string   `yaml:"doc,omitempty"`
-	Repeat     string   `yaml:"repeat,omitempty"`
-	RepeatExpr string   `yaml:"repeat-expr,omitempty"`
-	Contents   Contents `yaml:"contents,omitempty"`
-	Value      string   `yaml:"value,omitempty"`
-	Pos        string   `yaml:"pos,omitempty"`
-	Whence     string   `yaml:"whence,omitempty"`
-	Enum       string   `yaml:"enum,omitempty"`
+	Category    string   `-`
+	ID          string   `yaml:"id,omitempty"`
+	Type        TypeKey  `yaml:"type"`
+	Size        string   `yaml:"size,omitempty"`
+	Doc         string   `yaml:"doc,omitempty"`
+	Repeat      string   `yaml:"repeat,omitempty"`
+	RepeatExpr  string   `yaml:"repeat-expr,omitempty"`
+	RepeatUntil string   `yaml:"repeat-until,omitempty"`
+	Contents    Contents `yaml:"contents,omitempty"`
+	Value       string   `yaml:"value,omitempty"`
+	Pos         string   `yaml:"pos,omitempty"`
+	Whence      string   `yaml:"whence,omitempty"`
+	Enum        string   `yaml:"enum,omitempty"`
+	If          string   `yaml:"if,omitempty"`
+	// Encoding    string   `yaml:"encoding,omitempty"`
 }
 
 func (k *Attribute) Name() string {
 	return strcase.ToLowerCamel(k.ID)
 }
 
-func (k *Attribute) DataType() string {
+func (k *Attribute) ChildType() string {
 	dataType := k.Type.String()
 	if dataType == "runtime.Bytes" { // || dataType == "runtime.String" {
 		if k.Value != "" {
 			dataType = getType(k.Value)
 		} else if k.Size != "" {
-			k.Repeat = "yes"
-			k.RepeatExpr = strings.Replace(k.Size, "%", "%%", -1)
-			return "runtime.ByteSlice"
+			k.Size = strings.Replace(k.Size, "%", "%%", -1)
+			dataType = "runtime.ByteSlice"
 		} else if k.Contents.Len() != 0 {
-			k.Repeat = "yes"
-			k.RepeatExpr = fmt.Sprintf("%d", k.Contents.Len())
-			return "runtime.ByteSlice"
+			k.Size = fmt.Sprintf("%d", k.Contents.Len())
+			dataType = "runtime.ByteSlice"
 		}
 	}
+	return dataType
+}
 
+func (k *Attribute) DataType() string {
+	dataType := k.ChildType()
 	if k.Repeat != "" {
 		if !isInt(k.RepeatExpr) || k.Repeat == "eos" {
 			dataType = "[]" + dataType
@@ -134,6 +158,7 @@ func (k *Attribute) String() string {
 }
 
 type Type struct {
+	Meta      Meta                      `yaml:"meta,omitempty"`
 	Types     map[string]Type           `yaml:"types,omitempty"`
 	Seq       []Attribute               `yaml:"seq,omitempty"`
 	Enums     map[string]map[int]string `yaml:"enums,omitempty"`
@@ -141,8 +166,35 @@ type Type struct {
 	Instances map[string]Attribute      `yaml:"instances,omitempty"`
 }
 
-func (k *Type) InitAttr(attr Attribute) string {
+func (k *Type) InitVar(name, dataType, size string, init bool) string {
 	var buffer LineBuffer
+
+	// init and parse element
+	if init {
+		if dataType != "runtime.ByteSlice" {
+			buffer.WriteLine("var " + name + " " + dataType)
+		} else {
+			buffer.WriteLine(name + " := make(runtime.ByteSlice, " + goExpr(size, "int64") + ")")
+		}
+	} else {
+		if dataType == "runtime.ByteSlice" {
+			buffer.WriteLine(name + " = make(runtime.ByteSlice, " + goExpr(size, "int64") + ")")
+		}
+	}
+
+	buffer.WriteLine(name + ".DecodeAncestors(k, k.Root)")
+
+	return buffer.String()
+}
+
+func (k *Type) InitAttr(attr Attribute) (goCode string) {
+	var buffer LineBuffer
+	defer func() { goCode = buffer.String() }()
+
+	if attr.If != "" {
+		buffer.WriteLine("if " + goExpr(attr.If, "") + "{")
+		defer buffer.WriteLine("}") // end if
+	}
 
 	if attr.Value != "" {
 		// value instance
@@ -151,51 +203,78 @@ func (k *Type) InitAttr(attr Attribute) string {
 		} else {
 			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "(" + goExpr(attr.Value, "") + ")")
 		}
-		return buffer.String()
+
+		return
 	}
 
 	if attr.Pos != "" {
-		buffer.WriteLine("_, decoder.Err = decoder.Seek(k.Start, io.SeekStart)")
-		whence := "io.SeekCurrent"
+		// save position
+		buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
+		whence := ""
 		switch attr.Whence {
 		case "seek_set":
 			whence = "io.SeekStart"
 		case "seek_end":
 			whence = "io.SeekEnd"
+		default:
+			whence = "io.SeekCurrent"
+			buffer.WriteLine("_, decoder.Err = decoder.Seek(0, io.SeekStart)")
+			buffer.WriteLine("if decoder.Err != nil {return}")
 		}
 		buffer.WriteLine("_, decoder.Err = decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
+		buffer.WriteLine("if decoder.Err != nil {return}")
+		// restore position
+		defer buffer.WriteLine("_, decoder.Err = decoder.Seek(pos, io.SeekStart)")
 	}
 
 	switch {
-	case attr.DataType() == "runtime.ByteSlice":
-		// byteslice
-		buffer.WriteLine("k." + attr.Name() + " = make(runtime.ByteSlice, " + goExpr(attr.RepeatExpr, "int64") + ")")
 	case attr.Repeat != "":
+		before := "true" // TODO: true is not parsed correctly
+		until := ""      // TODO: true is not parsed correctly
+		fall := false
 		switch attr.Repeat {
 		case "expr":
 			if attr.RepeatExpr == "" {
-				panic("RepeatExpr is missing")
+				panic("RepeatExpr is missing") // TODO: move to parsing
 			}
-			// array
-			if strings.HasPrefix(attr.DataType(), "[]") {
-				buffer.WriteLine("k." + attr.Name() + " = make(" + attr.DataType() + ", " + goExpr(attr.RepeatExpr, "") + ")")
+			before = "i < int(" + goExpr(attr.RepeatExpr, "") + ")"
+			fall = true
+			fallthrough
+		case "until":
+			if !fall {
+				if attr.RepeatUntil == "" {
+					panic("RepeatUntil is missing") // TODO: move to parsing
+				}
+				until = goExprAttr(attr.RepeatUntil, "", attr.Name()+"[i]")
 			}
-			buffer.WriteLine("for i := 0; i < int(" + goExpr(attr.RepeatExpr, "") + "); i += 1 {")
-			buffer.WriteLine("k." + attr.Name() + "[i].DecodeAncestors(k, k.Root)")
-			buffer.WriteLine("}")
-			return buffer.String()
+			fallthrough
 		case "eos":
-			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "{}")
-			buffer.WriteLine("for i := 0; true; i++ {")
-			buffer.WriteLine("var elem " + attr.DataType()[2:])
-			buffer.WriteLine("elem.DecodeAncestors(k, k.Root)")
-			buffer.WriteLine("if decoder.Err != nil {")
-			buffer.WriteLine("decoder.Err = nil")
-			buffer.WriteLine("break")
+			// slice
+			if strings.HasPrefix(attr.DataType(), "[]") {
+				buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "{}")
+			}
+
+			buffer.WriteLine("for i := 0; " + before + "; i++ {")
+
+			buffer.WriteString(k.InitVar("elem", attr.ChildType(), attr.Size, true))
+
+			// break on error
+			buffer.WriteLine("if decoder.Err != nil {decoder.Err = nil; break}")
+
+			// add element
+			if strings.HasPrefix(attr.DataType(), "[]") {
+				buffer.WriteLine("k." + attr.Name() + " = append(k." + attr.Name() + ", elem)")
+			} else {
+				buffer.WriteLine("k." + attr.Name() + "[i] = elem")
+			}
+
+			// break on repeat-until
+			if until != "" {
+				buffer.WriteLine("if " + until + "{break}")
+			}
+
 			buffer.WriteLine("}")
-			buffer.WriteLine("k." + attr.Name() + " = append(k." + attr.Name() + ", elem)")
-			buffer.WriteLine("}")
-			return buffer.String()
+			return
 		}
 	case attr.Type.CustomType:
 		// custom struct
@@ -210,9 +289,8 @@ func (k *Type) InitAttr(attr Attribute) string {
 		buffer.WriteLine("}")
 	}
 
-	buffer.WriteLine("k." + attr.Name() + ".DecodeAncestors(k, k.Root)")
-	return buffer.String()
-
+	buffer.WriteString(k.InitVar("k."+attr.Name(), attr.DataType(), attr.Size, false))
+	return
 }
 
 func (k *Type) String(typeName string, parent string, root string) string {
@@ -248,7 +326,11 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker) (err error) {")
 	buffer.WriteLine("if decoder != nil && decoder.Err != nil { return decoder.Err }")
-	buffer.WriteLine("if decoder == nil { decoder = &runtime.Decoder{reader, binary.LittleEndian, nil}; runtime.RTDecoder = decoder }")
+	endian := "binary.LittleEndian"
+	if val, ok := endianess[k.Meta.Endian]; ok {
+		endian = val
+	}
+	buffer.WriteLine("if decoder == nil { decoder = &runtime.Decoder{reader, " + endian + ", nil}; runtime.RTDecoder = decoder }")
 	buffer.WriteLine("k.DecodeAncestors(k, k)")
 	buffer.WriteLine("return decoder.Err")
 	buffer.WriteLine("}")
@@ -263,6 +345,8 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("if decoder.Err != nil { return }")
 	buffer.WriteLine("k.parent = parent")
 	buffer.WriteLine("k.Root = root.(*" + root + ")")
+	// buffer.WriteLine("k.Start, decoder.Err = decoder.Seek(0, io.SeekCurrent)")
+	buffer.WriteLine("fmt.Println(\"" + typeName + "\", k.Start)")
 	for _, attr := range k.Seq {
 		buffer.WriteString(k.InitAttr(attr))
 	}
@@ -271,7 +355,7 @@ func (k *Type) String(typeName string, parent string, root string) string {
 
 	// create getter
 	for _, attr := range k.Seq {
-		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(attr.Name()) + "() (" + attr.DataType() + ") {")
+		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(attr.Name()) + "() (value " + attr.DataType() + ") {")
 		buffer.WriteLine("return " + "" + "k." + attr.Name())
 		buffer.WriteLine("}")
 	}
@@ -279,7 +363,7 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	// create inst getter
 	for name, inst := range k.Instances {
 		inst.ID = name
-		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(inst.Name()) + "() (" + inst.DataType() + ") {")
+		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(inst.Name()) + "() (value " + inst.DataType() + ") {")
 		buffer.WriteLine("if !k." + inst.Name() + "Set {")
 		buffer.WriteString(k.InitAttr(inst))
 		buffer.WriteLine("k." + inst.Name() + "Set = true")

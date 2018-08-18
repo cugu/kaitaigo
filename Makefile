@@ -38,6 +38,7 @@ successful_tests:
 		gitlab.com/cugu/kaitai.go/parser/kaitai/expr_2 \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/hello_world \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/instance_std \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/integers \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/js_signed_right_shift \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/meta_xref \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/multiple_use \
@@ -47,17 +48,24 @@ successful_tests:
 		gitlab.com/cugu/kaitai.go/parser/kaitai/nested_same_name \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types2 \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/position_abs \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_eos_struct \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_struct \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/str_eos \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/str_literals2 \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/type_int_unary_op \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/user_type \
-		gitlab.com/cugu/kaitai.go/parser/kaitai/integers \
-		gitlab.com/cugu/kaitai.go/parser/kaitai/position_abs
+		gitlab.com/cugu/kaitai.go/parser/kaitai/instance_std_array \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/default_big_endian \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/if_struct \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/position_in_seq \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/if_values # change tests for nil
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz # fix tests
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz_double # fix tests
-	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_eos_u4 # fix tests, typecast
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_eos_u4 \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_s4 \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_complex # fix tests, typecast
 
 no_tests:
 	@# go test -v bits_byte_aligned & true
@@ -136,12 +144,12 @@ no_tests:
 	@# go test -v yaml_ints & true
 
 failing_tests:
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/default_endian_mod & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bytes_pad_term  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/default_big_endian  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/instance_std_array  & true # TODO
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/if_struct  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/position_in_seq  & true
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term  & true
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_bytes  & true
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term_empty  & true
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_strz  & true
+
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_rotate  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_custom  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_to_user  & true
@@ -149,13 +157,6 @@ failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor4_value  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor_const  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor_value  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_encodings  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_s4  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_encodings_default  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_bytes  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term_empty  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_strz  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/zlib_with_header_78  & true
 
 build_failing_tests:
@@ -163,26 +164,26 @@ build_failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bcd_user_type_le & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings_docref & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_array & true # [build failed]
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_array & true # [build failed] <-
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_bytes_cmp & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_io_pos & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/fixed_contents & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/fixed_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/float_to_i & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/floating_points & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/if_values & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/nav_parent_vs_value_inst & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_coerce_bytes & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_coerce_usertype1 & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_coerce_usertype2 & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_eos_struct & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_complex & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/type_ternary & true # [build failed]
 
 deprecated_tests:
-	@# Can be fixed
+	@# Could be fixed
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types3 & true # accessing nested types is not allowed
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/enum_fancy & true # no fancy enums
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/default_endian_mod & true # no nested endianess
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_encodings # no other encoding
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_encodings_default # no other encoding
 
 	@# Hard to fix
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_mod  & true # -2 % 8 => -2

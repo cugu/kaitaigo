@@ -22,10 +22,13 @@ func TestIfValues(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 80, r.Codes()[0].Opcode())
-	assert.EqualValues(t, 40, r.Codes()[0].HalfOpcode())
-	assert.EqualValues(t, 65, r.Codes()[1].Opcode())
-	assert.Nil(t, r.Codes()[1].HalfOpcode())
-	assert.EqualValues(t, 67, r.Codes()[2].Opcode())
-	assert.Nil(t, r.Codes()[2].HalfOpcode())
+	codes := r.Codes()
+	assert.EqualValues(t, 80, codes[0].Opcode())
+	assert.EqualValues(t, 40, codes[0].HalfOpcode())
+	assert.EqualValues(t, 65, codes[1].Opcode())
+	// assert.Nil(t, codes[1].HalfOpcode()) uint cannot be nil
+	assert.EqualValues(t, 0, codes[1].HalfOpcode())
+	assert.EqualValues(t, 67, codes[2].Opcode())
+	// assert.Nil(t, codes[2].HalfOpcode()) uint cannot be nil
+	assert.EqualValues(t, 0, codes[2].HalfOpcode())
 }

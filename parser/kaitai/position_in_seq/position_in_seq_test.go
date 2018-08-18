@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gitlab.com/cugu/kaitai.go/runtime"
 )
 
 func TestPositionInSeq(t *testing.T) {
@@ -20,5 +21,6 @@ func TestPositionInSeq(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, []uint8{1, 2, 3}, r.Numbers())
+	assert.EqualValues(t, 3, r.Header().QtyNumbers())
+	assert.EqualValues(t, []runtime.Uint8{1, 2, 3}, r.Numbers())
 }
