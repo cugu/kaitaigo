@@ -15,12 +15,12 @@ install:
 code:
 	@printf '\n\nCode\n'
 	@# compiler parser/...
-	@# compiler `find parser -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@compiler `find parser -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/kaitai/type_int_unary_op -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/kaitai/user_type -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/mbr -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/gpt -name "*.ksy" -type f | grep -v "/enum_fancy/"`
-	@compiler `find parser/kaitai/expr_3 -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@# compiler `find parser/kaitai/expr_3 -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
 test: successful_tests no_tests failing_tests build_failing_tests deprecated_tests
 	@# gotestsum --no-summary errors,failed gitlab.com/cugu/kaitai.go/parser/... 2>/dev/null
@@ -28,32 +28,32 @@ test: successful_tests no_tests failing_tests build_failing_tests deprecated_tes
 successful_tests:
 	@printf '\n\nTest\n'
 	@go test gitlab.com/cugu/kaitai.go/cmd/compiler
-	@# go test gitlab.com/cugu/kaitai.go/parser/mbr
-	@# go test gitlab.com/cugu/kaitai.go/parser/apfs
-	@# go test gitlab.com/cugu/kaitai.go/parser/gpt
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/enum_0
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_0
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_1
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_2
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/hello_world
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/instance_std
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/js_signed_right_shift
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/meta_xref
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/multiple_use
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/nav_parent
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/nav_parent_false2
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/nav_root
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/nested_same_name
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types2
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_struct
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/str_eos
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/str_literals2
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/type_int_unary_op
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/user_type
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
-	@# go test gitlab.com/cugu/kaitai.go/parser/kaitai/integers
+	@go test gitlab.com/cugu/kaitai.go/parser/mbr
+	@go test gitlab.com/cugu/kaitai.go/parser/apfs
+	@go test gitlab.com/cugu/kaitai.go/parser/gpt
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/enum_0
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_0
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_1
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/expr_2
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/hello_world
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/instance_std
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/js_signed_right_shift
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/meta_xref
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/multiple_use
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/nav_parent
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/nav_parent_false2
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/nav_root
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/nested_same_name
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/nested_types2
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_struct
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/str_eos
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/str_literals2
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/type_int_unary_op
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/user_type
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/integers
 
 no_tests:
 	@# go test -v bits_byte_aligned & true
@@ -163,7 +163,7 @@ build_failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bcd_user_type_le & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings_docref & true # [build failed]
-	@go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_3 & true # [build failed]
+	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_3 & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_array & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_bytes_cmp & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_io_pos & true # [build failed]

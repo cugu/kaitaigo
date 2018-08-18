@@ -98,7 +98,7 @@ func (k *Attribute) Name() string {
 
 func (k *Attribute) DataType() string {
 	dataType := k.Type.String()
-	if dataType == "runtime.Bytes" { // || dataType == "string" {
+	if dataType == "runtime.Bytes" { // || dataType == "runtime.String" {
 		if k.Value != "" {
 			dataType = getType(k.Value)
 		} else if k.Size != "" {

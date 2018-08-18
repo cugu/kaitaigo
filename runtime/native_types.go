@@ -42,6 +42,24 @@ func (v *ByteSlice) DecodeAncestors(parent interface{}, root interface{}) {
 	}
 }
 
+/*
+type String ByteSlice //string
+
+/*
+func (v *String) DecodeAncestors(parent interface{}, root interface{}) {
+	if RTDecoder.Err != nil {
+		return
+	}
+	b := make([]byte, len(*v))
+	_, err := RTDecoder.Read(b)
+	if err != nil {
+		RTDecoder.Err = err
+	}
+	tmp := String(b)
+	v = &tmp
+}
+*/
+
 type Uint8 uint8
 
 func (v *Uint8) DecodeAncestors(parent interface{}, root interface{}) {
