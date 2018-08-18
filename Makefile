@@ -1,5 +1,7 @@
 all: clean install code test
 
+fast: clean install code fasttest
+
 clean:
 	@printf '\nClean\n'
 	find parser -name "*.ksy.*" -type f -delete
@@ -22,14 +24,17 @@ code:
 	@# compiler `find parser/gpt -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 	@# compiler `find parser/kaitai/expr_3 -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
-test: successful_tests no_tests failing_tests build_failing_tests deprecated_tests
+test:compiler successful_tests no_tests failing_tests build_failing_tests deprecated_tests
 	@# gotestsum --no-summary errors,failed gitlab.com/cugu/kaitai.go/parser/... 2>/dev/null
+
+fasttest: compiler no_tests failing_tests build_failing_tests deprecated_tests
+
+compiler:
+	@go test gitlab.com/cugu/kaitai.go/cmd/compiler
 
 successful_tests:
 	@printf '\n\nTest\n'
-	@go test gitlab.com/cugu/kaitai.go/cmd/compiler \
-		gitlab.com/cugu/kaitai.go/parser/mbr \
-		gitlab.com/cugu/kaitai.go/parser/apfs \
+	@go test gitlab.com/cugu/kaitai.go/parser/mbr \
 		gitlab.com/cugu/kaitai.go/parser/gpt \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/enum_0 \
@@ -59,13 +64,16 @@ successful_tests:
 		gitlab.com/cugu/kaitai.go/parser/kaitai/default_big_endian \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/if_struct \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/position_in_seq \
-		gitlab.com/cugu/kaitai.go/parser/kaitai/if_values # change tests for nil
+		gitlab.com/cugu/kaitai.go/parser/kaitai/fixed_contents \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/fixed_struct \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz # fix tests
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz_double # fix tests
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_eos_u4 \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_s4 \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_until_complex # fix tests, typecast
+	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/if_values # change tests for nil
 
 no_tests:
 	@# go test -v bits_byte_aligned & true
@@ -153,29 +161,29 @@ failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_rotate  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_custom  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_to_user  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor4_const  & true
+	@go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor4_const  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor4_value  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor_const  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_xor_value  & true
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/zlib_with_header_78  & true
+	@#go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/type_ternary & true # [build failed]
+
+	@# gitlab.com/cugu/kaitai.go/parser/apfs \
 
 build_failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bcd_user_type_be & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bcd_user_type_le & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/docstrings_docref & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_array & true # [build failed] <-
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_bytes_cmp & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/expr_io_pos & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/fixed_contents & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/fixed_struct & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/float_to_i & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/floating_points & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/nav_parent_vs_value_inst & true # [build failed]
+
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_coerce_bytes & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_coerce_usertype1 & true # [build failed]
 	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/process_coerce_usertype2 & true # [build failed]
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/type_ternary & true # [build failed]
 
 deprecated_tests:
 	@# Could be fixed

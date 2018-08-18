@@ -189,7 +189,7 @@ func (k *Type) InitVar(name, dataType, size string, init bool) string {
 
 func (k *Type) InitAttr(attr Attribute) (goCode string) {
 	var buffer LineBuffer
-	defer func() { goCode = buffer.String() }()
+	defer func() { goCode = buffer.String() + "\n" }()
 
 	if attr.If != "" {
 		buffer.WriteLine("if " + goExpr(attr.If, "") + "{")
@@ -203,21 +203,22 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		} else {
 			buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "(" + goExpr(attr.Value, "") + ")")
 		}
-
 		return
 	}
 
 	if attr.Pos != "" {
 		// save position
 		buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
-		whence := ""
-		switch attr.Whence {
-		case "seek_set":
-			whence = "io.SeekStart"
-		case "seek_end":
-			whence = "io.SeekEnd"
-		default:
-			whence = "io.SeekCurrent"
+		whence := "io.SeekCurrent"
+		whenceMap := map[string]string{
+			"seek_set": "io.SeekStart",
+			"seek_end": "io.SeekEnd",
+			"seek_cur": "io.SeekCurrent",
+		}
+		if val, ok := whenceMap[attr.Whence]; ok {
+			whence = val
+		}
+		if whence == "io.SeekCurrent" {
 			buffer.WriteLine("_, decoder.Err = decoder.Seek(0, io.SeekStart)")
 			buffer.WriteLine("if decoder.Err != nil {return}")
 		}
@@ -279,6 +280,10 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 	case attr.Type.CustomType:
 		// custom struct
 		// init variable
+		if attr.Size != "" {
+			buffer.WriteLine(attr.Name() + "pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
+			defer buffer.WriteLine("_, decoder.Err = decoder.Seek(" + attr.Name() + "pos + " + goExpr(attr.Size, "int64") + ", io.SeekStart)")
+		}
 		buffer.WriteLine("k." + attr.Name() + " = &" + attr.DataType()[1:] + "{}")
 	case attr.Type.TypeSwitch.SwitchOn != "":
 		buffer.WriteLine("switch " + goExpr(attr.Type.TypeSwitch.SwitchOn, "int64") + " {")
@@ -290,6 +295,9 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 	}
 
 	buffer.WriteString(k.InitVar("k."+attr.Name(), attr.DataType(), attr.Size, false))
+
+	// process TODO
+
 	return
 }
 
@@ -303,7 +311,6 @@ func (k *Type) String(typeName string, parent string, root string) string {
 
 	// print type start
 	buffer.WriteLine("type " + typeName + " struct{")
-	buffer.WriteLine("Start int64")
 	buffer.WriteLine("parent interface{}")
 	buffer.WriteLine("Root *" + root)
 
@@ -345,8 +352,7 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("if decoder.Err != nil { return }")
 	buffer.WriteLine("k.parent = parent")
 	buffer.WriteLine("k.Root = root.(*" + root + ")")
-	// buffer.WriteLine("k.Start, decoder.Err = decoder.Seek(0, io.SeekCurrent)")
-	buffer.WriteLine("fmt.Println(\"" + typeName + "\", k.Start)")
+
 	for _, attr := range k.Seq {
 		buffer.WriteString(k.InitAttr(attr))
 	}

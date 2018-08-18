@@ -67,10 +67,18 @@ func getExprType(expr ast.Expr) (s string, r bool) {
 			s = expressionTypes[x.Kind]
 			return false
 		case *ast.Ident:
-			s = getKaitaiType(x.Name)
+			if x.Name == "true" || x.Name == "false" {
+				s = "bool"
+			} else {
+				s = getKaitaiType(x.Name)
+			}
 			return false
 		case *ast.UnaryExpr:
-			s = "runtime.Int64"
+			if x.Op == token.NOT {
+				s = "bool"
+			} else {
+				s = "runtime.Int64"
+			}
 			return false
 		case *ast.BinaryExpr:
 			s = expressionTypes[x.Op]
@@ -154,8 +162,14 @@ func goExprIdent(expr, casttype, current_attr string) string {
 	s.Init(strings.NewReader(expr))
 	s.Filename = "example"
 	cast := false
+	// fmt.Println("inner start")
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+		// fmt.Println("inner", s.TokenText())
 		switch s.TokenText() {
+		case "not":
+			ret = "!"
+		case "true", "false":
+			ret = s.TokenText()
 		case "_":
 			ret = ret[:len(ret)-1] + "." + current_attr
 		case "\"":
@@ -217,11 +231,13 @@ func goExprAttr(expr, casttype, current_attr string) string {
 
 	var s scanner.Scanner
 	s.Init(strings.NewReader(expr))
+	s.Whitespace = 0
 	s.Filename = "example"
 	identifier := ""
 	casting := false
 	ret := ""
 	for tok := s.Scan(); tok != scanner.EOF; tok = s.Scan() {
+		// fmt.Println(tok, s.TokenText())
 
 		// handle identifier chain
 		if !isIdentifierPart(tok, casting) && identifier != "" {
@@ -242,14 +258,15 @@ func goExprAttr(expr, casttype, current_attr string) string {
 				casting = false
 			}
 
-			identifier += identifierPart
+			identifier += " " + identifierPart
 		case tok == '?':
 			parts := strings.SplitN(expr, "?", 2)
 			check := goExpr(parts[0], "")
 			cases := strings.SplitN(parts[1], ":", 2)
 			ifvalue := goExpr(cases[0], "")
 			elsevalue := goExpr(cases[1], "")
-			return fmt.Sprintf("func()int64{if %s{return %s}else{return %s}}()", check, ifvalue, elsevalue)
+
+			return fmt.Sprintf("func()"+getType(ifvalue)+"{if %s{return %s}else{return %s}}()", check, ifvalue, elsevalue)
 		default:
 			ret += s.TokenText()
 		}

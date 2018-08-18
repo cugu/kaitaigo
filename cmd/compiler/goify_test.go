@@ -14,9 +14,45 @@ type Result struct {
 
 func TestGoify(t *testing.T) {
 
+	kaitaiTypes = map[string]string{
+		"Itoa":    "runtime.Bytes",
+		"len":     "runtime.Int64",
+		"bool":    "bool",
+		"string":  "runtime.Bytes",
+		"int":     "runtime.Int32",
+		"int8":    "runtime.Int8",
+		"int16":   "runtime.Int16",
+		"int32":   "runtime.Int32",
+		"int64":   "runtime.Int64",
+		"uint":    "runtime.Uint",
+		"uint8":   "runtime.Uint8",
+		"uint16":  "runtime.Uint16",
+		"uint32":  "runtime.Uint32",
+		"uint64":  "runtime.Uint64",
+		"byte":    "runtime.Byte",
+		"rune":    "runtime.Byte",
+		"float32": "runtime.Float32",
+		"float64": "runtime.Float64",
+	}
+
 	tests := []Result{
 		// "_root._io":                                                       "k.Root.IO()",
 		// "_io.size - _root.sector_size":                                    "k.IO().Size() - k.Root.SectorSize()",
+		Result{
+			Input:  "true",
+			GoCode: "true",
+			Type:   "bool",
+		},
+		Result{
+			Input:  "true && false",
+			GoCode: "true && false",
+			Type:   "bool",
+		},
+		Result{
+			Input:  "not true",
+			GoCode: "!true",
+			Type:   "bool",
+		},
 		Result{
 			Input:  "entries_start",
 			GoCode: "k.EntriesStart()",
@@ -49,7 +85,7 @@ func TestGoify(t *testing.T) {
 		},
 		Result{
 			Input:  "(_parent.level > 0) ? 256 : key_hdr.kind.to_i",
-			GoCode: "func()int64{if (k.Parent().Level() > 0){return 256}else{return int64(k.KeyHdr().Kind())}}()",
+			GoCode: "func()runtime.Int64{if (k.Parent().Level() > 0){return 256}else{return int64(k.KeyHdr().Kind())}}()",
 			Type:   "runtime.Int64",
 		},
 		Result{
@@ -85,6 +121,11 @@ func TestGoify(t *testing.T) {
 		Result{
 			Input:  "-9837 % 13",
 			GoCode: "-9837 % 13",
+			Type:   "runtime.Int64",
+		},
+		Result{
+			Input:  "-9837",
+			GoCode: "-9837",
 			Type:   "runtime.Int64",
 		},
 		Result{
