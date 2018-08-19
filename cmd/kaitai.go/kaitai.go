@@ -383,7 +383,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		buffer.WriteLine("switch " + goExpr(attr.Type.TypeSwitch.SwitchOn, "int64") + " {")
 		for casevalue, casetype := range attr.Type.TypeSwitch.Cases {
 			buffer.WriteLine("case " + goenum(casevalue, "int64") + ":")
-			buffer.WriteLine("k." + attr.Name() + " = &" + casetype.String() + "{}")
+			buffer.WriteLine("bs = &" + casetype.String() + "{}")
 		}
 		buffer.WriteLine("}")
 	}

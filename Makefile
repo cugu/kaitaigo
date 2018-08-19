@@ -1,48 +1,43 @@
 all: clean install code test
 
-fast: clean install code fasttest
-
 clean:
 	@printf '\nClean\n'
-	find parser -name "*.ksy.*" -type f -delete
 	find tests -name "*.ksy.*" -type f -delete
 
 install:
 	@printf '\n\nInstall\n'
-	goimports -w cmd/compiler
-	goimports -w parser
-	goimports -w cmd
+	goimports -w cmd/kaitai.go
 	goimports -w runtime
 	go install gitlab.com/cugu/kaitai.go/cmd/...
 
 code:
 	@printf '\n\nCode\n'
-	@compiler `find parser -name "*.ksy" -type f`
-	@compiler `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	@kaitai.go `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
-test:compiler successful_tests missing_tests failing_tests
-	@# gotestsum --no-summary errors,failed gitlab.com/cugu/kaitai.go/parser/... 2>/dev/null
+test: compiler_test ks_tests missing_tests failing_tests
 
-fasttest: compiler missing_tests failing_tests
-
-compiler:
+compiler_test:
 	@printf '\n\nTest\n'
-	@go test gitlab.com/cugu/kaitai.go/cmd/compiler
+	@go test gitlab.com/cugu/kaitai.go/cmd/...
 
-successful_tests:
-	@go test gitlab.com/cugu/kaitai.go/parser/mbr \
-		gitlab.com/cugu/kaitai.go/parser/gpt \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/buffered_struct \
+ks_tests:
+	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/buffered_struct \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_be \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_le \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/bytes_pad_term \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/default_big_endian \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/docstrings \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/docstrings_docref \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/enum_0 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/expr_0 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/expr_1 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/expr_2 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/fixed_contents \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/fixed_struct \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/float_to_i \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/hello_world \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/if_struct \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/if_values \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/instance_std \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/instance_std_array \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/integers \
@@ -57,6 +52,8 @@ successful_tests:
 		gitlab.com/cugu/kaitai.go/tests/kaitai/nested_types2 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/position_abs \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/position_in_seq \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/position_to_end \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/process_coerce_bytes \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/process_custom \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/process_rotate \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/process_xor4_const \
@@ -64,30 +61,29 @@ successful_tests:
 		gitlab.com/cugu/kaitai.go/tests/kaitai/process_xor_const \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/process_xor_value \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_eos_struct \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_eos_u4 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_n_struct \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_n_strz \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_n_strz_double \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_until_complex \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_until_s4 \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/str_eos \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/str_literals2 \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/type_int_unary_op \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/user_type \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/zlib_with_header_78 \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/str_pad_term \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/str_pad_term_empty \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/term_bytes \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/term_strz \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/str_pad_term \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/bytes_pad_term \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/str_pad_term_empty \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/docstrings_docref \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_be \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/float_to_i \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_le \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/process_coerce_bytes
-	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/position_to_end # fixed io
-	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_n_strz # fix tests
-	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_n_strz_double # fix tests
-	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_eos_u4 \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_until_s4 \
-		gitlab.com/cugu/kaitai.go/tests/kaitai/repeat_until_complex # fix tests, typecast
-	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/if_values # change tests for nil
-
+		gitlab.com/cugu/kaitai.go/tests/kaitai/type_int_unary_op \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/user_type \
+		gitlab.com/cugu/kaitai.go/tests/kaitai/zlib_with_header_78
+	@# Changes
+	@# position_to_end # fixed io
+	@# repeat_n_strz # fix tests
+	@# repeat_n_strz_double # fix tests
+	@# repeat_eos_u4 # fix tests, typecast
+	@# repeat_until_s4 # fix tests, typecast
+	@# repeat_until_complex # fix tests, typecast
+	@# if_values # change tests for nil
 
 missing_tests:
 	@# go test -v bits_byte_aligned & true
@@ -166,9 +162,6 @@ missing_tests:
 	@# go test -v yaml_ints & true
 
 failing_tests:
-	@#TODO
-	@go test gitlab.com/cugu/kaitai.go/parser/apfs & true
-
 	@# Could be fixed
 	@# go test -v gitlab.com/cugu/kaitai.go/tests/kaitai/nested_types3 		# accessing nested types is not allowed
 	@# go test -v gitlab.com/cugu/kaitai.go/tests/kaitai/enum_fancy 			# no fancy enums
@@ -193,13 +186,3 @@ failing_tests:
 	@# go test -v gitlab.com/cugu/kaitai.go/tests/kaitai/nested_same_name2 	# dublicate names are not allowed
 
 
-perf:
-	go test -run none -cpuprofile apfsprof -bench . -v gitlab.com/cugu/kaitai.go/parser/apfs
-	go tool pprof apfsprof
-	# go test -run=none -cpuprofile=mbrprof --bench=. -v gitlab.com/cugu/kaitai.go/parser/mbr
-	# go tool pprof mbrprof
-	# go test -run=none -cpuprofile=gptprof --bench=. -v gitlab.com/cugu/kaitai.go/parser/gpt
-	# go tool pprof gptprof
-
-memory:
-	 go test -run none -memprofile apfs.mem.prof  -bench . -v gitlab.com/cugu/kaitai.go/parser/apfs
