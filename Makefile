@@ -34,6 +34,7 @@ compiler:
 
 successful_tests:
 	@printf '\n\nTest\n'
+
 	@go test gitlab.com/cugu/kaitai.go/parser/mbr \
 		gitlab.com/cugu/kaitai.go/parser/gpt \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/buffered_struct \
@@ -73,7 +74,12 @@ successful_tests:
 		gitlab.com/cugu/kaitai.go/parser/kaitai/str_literals2 \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/type_int_unary_op \
 		gitlab.com/cugu/kaitai.go/parser/kaitai/user_type \
-		gitlab.com/cugu/kaitai.go/parser/kaitai/zlib_with_header_78
+		gitlab.com/cugu/kaitai.go/parser/kaitai/zlib_with_header_78 \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/term_bytes \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/term_strz \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/bytes_pad_term \
+		gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term_empty
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/position_to_end # fixed io
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz # fix tests
 	@go test gitlab.com/cugu/kaitai.go/parser/kaitai/repeat_n_strz_double # fix tests
@@ -159,11 +165,6 @@ no_tests:
 	@# go test -v yaml_ints & true
 
 failing_tests:
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/bytes_pad_term  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_bytes  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/str_pad_term_empty  & true
-	@# go test -v gitlab.com/cugu/kaitai.go/parser/kaitai/term_strz  & true
 	@# gitlab.com/cugu/kaitai.go/parser/apfs \
 
 build_failing_tests:

@@ -115,6 +115,11 @@ type Attribute struct {
 	Enum        string   `yaml:"enum,omitempty"`
 	If          string   `yaml:"if,omitempty"`
 	Process     string   `yaml:"process,omitempty"`
+	Terminator  string   `yaml:"terminator,omitempty"`
+	Consume     string   `yaml:"consume,omitempty"`
+	Include     string   `yaml:"include,omitempty"`
+	EosError    string   `yaml:"eos-error,omitempty"`
+	Pad         string   `yaml:"pad-right,omitempty"`
 	// Encoding    string   `yaml:"encoding,omitempty"`
 }
 
@@ -168,54 +173,116 @@ type Type struct {
 	Instances map[string]Attribute      `yaml:"instances,omitempty"`
 }
 
-func (k *Type) InitVar(attr Attribute, name, dataType string, init bool) string {
+func (k *Type) InitVar(attr Attribute, dataType string, init bool) (goCode string) {
 	var buffer LineBuffer
+
+	defer func() { buffer.WriteLine("decoder.SetErr(err)"); goCode = buffer.String() }()
 
 	// init and parse element
 	if init && dataType != "[]byte" {
-		buffer.WriteLine("var " + name + " " + dataType)
+
 	}
 	if dataType == "[]byte" && attr.Size != "" {
-		if init {
-			buffer.WriteLine(name + " := make([]byte, " + goExpr(attr.Size, "") + ")")
-		} else {
-			buffer.WriteLine(name + " = make([]byte, " + goExpr(attr.Size, "") + ")")
-		}
+		buffer.WriteLine("bs = make([]byte, " + goExpr(attr.Size, "") + ")")
 	}
 
+	terminated := attr.Terminator != "" || attr.Type.Type == "strz"
+	resetPos := (attr.Size == "" && terminated) || attr.Size != ""
+
+	if resetPos {
+		// save position
+		buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent)")
+	}
+
+	// read data
 	if isNative(dataType) {
 		if strings.HasSuffix(attr.ID, "be") {
 			endian = "binary.BigEndian"
 		}
 		if attr.SizeEos != "" {
-			buffer.WriteLine("b, err := ioutil.ReadAll(decoder)")
+			buffer.WriteLine("bs, err = ioutil.ReadAll(decoder)")
 			buffer.WriteLine("decoder.SetErr(err)")
-			buffer.WriteLine(name + " = b")
-		} else if attr.Type.Type == "strz" {
-			buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent)")
-			buffer.WriteLine("b, err := bufio.NewReader(decoder).ReadBytes(byte(0))")
-			buffer.WriteLine("if err != nil && err != io.EOF {decoder.SetErr(err); return}")
-			buffer.WriteLine("_, err = decoder.Seek(pos+int64(len(b)), io.SeekStart)")
-			buffer.WriteLine("if err != nil {decoder.SetErr(err); return}")
-			if init {
-				buffer.WriteLine(name + " := b[:len(b)-1]")
+		} else if terminated {
+			term := "byte(0)"
+			if attr.Terminator != "" {
+				term = goExpr(attr.Terminator, "")
+			}
+			if attr.Size == "" {
+				buffer.WriteLine("bs, err = bufio.NewReader(decoder).ReadBytes(" + term + ")")
+				buffer.WriteLine("if err != nil && err == io.EOF { err = nil }")
 			} else {
-				buffer.WriteLine(name + " = b[:len(b)-1]")
+				// term & size
+				buffer.WriteLine("_, err = decoder.Read(bs)")
+				buffer.WriteLine("decoder.SetErr(err)")
 			}
 
+			// eos
+			if attr.EosError == "" {
+				attr.EosError = "true"
+			}
+			buffer.WriteLine("if err != nil && (err != io.EOF || " + goExpr(attr.EosError, "") + ") {")
+			buffer.WriteLine("decoder.SetErr(err)")
+			buffer.WriteLine("return")
+			buffer.WriteLine("}")
 		} else {
-			buffer.WriteLine("decoder.SetErr(binary.Read(decoder, " + endian + ", &" + name + "))")
+			buffer.WriteLine("err = binary.Read(decoder, " + endian + ", &bs)")
 		}
 	} else {
-		buffer.WriteLine(name + ".DecodeAncestors(k, k.Root)")
+		buffer.WriteLine("bs.DecodeAncestors(k, k.Root)")
 	}
 
-	return buffer.String()
+	// pad
+	if attr.Pad != "" {
+		buffer.WriteLine("bs = bytes.TrimRight(bs, string(" + goExpr(attr.Pad, "") + "))")
+	}
+
+	// term
+	if terminated && attr.Size != "" {
+		buffer.WriteLine("i := bytes.IndexByte(bs, " + goExpr(attr.Terminator, "") + ")")
+		buffer.WriteLine("if i != -1 {")
+		buffer.WriteLine("bs = bs[:i+1]")
+		buffer.WriteLine("}")
+	}
+
+	// calc new pos
+	if resetPos {
+		if attr.Size != "" {
+			buffer.WriteLine("pos = pos+int64(" + goExpr(attr.Size, "") + ")")
+		} else if dataType == "[]byte" {
+			buffer.WriteLine("pos = pos+int64(len(bs))")
+		}
+	}
+
+	// include
+	// buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent)")
+	// buffer.WriteLine("fmt.Println(pos, bs)")
+	if (terminated) && attr.Include == "" { // && attr.Size == "" {
+		buffer.WriteLine("bs = bs[:len(bs)-1]")
+	}
+
+	// reset position
+	if resetPos {
+		if terminated && attr.Consume != "" {
+			// consume
+			buffer.WriteLine("if !" + goExpr(attr.Consume, "") + " {")
+			buffer.WriteLine("pos -= 1")
+			buffer.WriteLine("}")
+		}
+		buffer.WriteLine("_, err = decoder.Seek(pos, io.SeekStart)")
+	}
+
+	return
 }
 
 func (k *Type) InitAttr(attr Attribute) (goCode string) {
 	var buffer LineBuffer
-	defer func() { goCode = buffer.String() + "\n" }()
+	buffer.WriteLine("{")
+	defer func() { buffer.WriteLine("}"); goCode = buffer.String() }()
+
+	if attr.Value == "" {
+		buffer.WriteLine("var bs " + attr.ChildType())
+	}
+	// buffer.WriteLine("bs = &" + attr.ChildType() + "{}")
 
 	if attr.If != "" {
 		buffer.WriteLine("if " + goExpr(attr.If, "") + "{")
@@ -234,7 +301,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 	if attr.Pos != "" {
 		// save position
-		buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
+		buffer.WriteLine("pos" + attr.Name() + ", _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
 		whence := "io.SeekCurrent"
 		whenceMap := map[string]string{
 			"seek_set": "io.SeekStart",
@@ -247,10 +314,10 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		if whence == "io.SeekCurrent" {
 			buffer.WriteLine("decoder.Seek(0, io.SeekStart)")
 		}
-		buffer.WriteLine("_, err := decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
+		buffer.WriteLine("_, err = decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
 		buffer.WriteLine("if err != nil {decoder.SetErr(err); return}")
 		// restore position
-		defer buffer.WriteLine("decoder.Seek(pos, io.SeekStart)")
+		defer buffer.WriteLine("decoder.Seek(pos" + attr.Name() + ", io.SeekStart)")
 	}
 
 	switch {
@@ -282,7 +349,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 			buffer.WriteLine("for i := 0; " + before + "; i++ {")
 
-			buffer.WriteString(k.InitVar(attr, "elem", attr.ChildType(), true))
+			buffer.WriteString(k.InitVar(attr, attr.ChildType(), true))
 
 			// break on error
 			buffer.WriteLine("if decoder.Err() != nil && decoder.Err() == io.EOF { decoder.UnsetErr(); break }")
@@ -290,9 +357,9 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 			// add element
 			if strings.HasPrefix(attr.DataType(), "[]") {
-				buffer.WriteLine("k." + attr.Name() + " = append(k." + attr.Name() + ", elem)")
+				buffer.WriteLine("k." + attr.Name() + " = append(k." + attr.Name() + ", bs)")
 			} else {
-				buffer.WriteLine("k." + attr.Name() + "[i] = elem")
+				buffer.WriteLine("k." + attr.Name() + "[i] = bs")
 			}
 
 			// break on repeat-until
@@ -306,11 +373,11 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 	case attr.Type.CustomType:
 		// custom struct
 		// init variable
-		if attr.Size != "" {
-			buffer.WriteLine(attr.Name() + "pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
-			defer buffer.WriteLine("decoder.Seek(" + attr.Name() + "pos + " + goExpr(attr.Size, "int64") + ", io.SeekStart)")
-		}
-		buffer.WriteLine("k." + attr.Name() + " = &" + attr.DataType()[1:] + "{}")
+		// if attr.Size != "" {
+		// 	buffer.WriteLine(attr.Name() + "pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
+		// 	defer buffer.WriteLine("decoder.Seek(" + attr.Name() + "pos + " + goExpr(attr.Size, "int64") + ", io.SeekStart)")
+		// }
+		// buffer.WriteLine("k." + attr.Name() + " = &" + attr.DataType()[1:] + "{}")
 	case attr.Type.TypeSwitch.SwitchOn != "":
 		buffer.WriteLine("switch " + goExpr(attr.Type.TypeSwitch.SwitchOn, "int64") + " {")
 		for casevalue, casetype := range attr.Type.TypeSwitch.Cases {
@@ -320,7 +387,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		buffer.WriteLine("}")
 	}
 
-	buffer.WriteString(k.InitVar(attr, "k."+attr.Name(), attr.DataType(), false))
+	buffer.WriteString(k.InitVar(attr, attr.DataType(), false))
 
 	if attr.Process != "" {
 		process := attr.Process
@@ -344,16 +411,22 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 			if strings.Contains(parameterList, ",") || (strings.HasPrefix(parameterList, "k") && getType(parameterList) != "uint8") {
 				list = "[]byte(" + parameterList + ")"
 			}
-			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessXOR(k." + attr.Name() + ", " + list + ")")
+			buffer.WriteLine("bs = " + "runtime.ProcessXOR(bs, " + list + ")")
 		case "rol":
-			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessRotateLeft(k." + attr.Name() + ", int(" + parameterList + "))")
+			buffer.WriteLine("bs = " + "runtime.ProcessRotateLeft(bs, int(" + parameterList + "))")
 		case "ror":
-			buffer.WriteLine("k." + attr.Name() + " = " + "runtime.ProcessRotateRight(k." + attr.Name() + ", int(" + parameterList + "))")
+			buffer.WriteLine("bs = " + "runtime.ProcessRotateRight(bs, int(" + parameterList + "))")
 		case "zlib":
-			buffer.WriteLine("k." + attr.Name() + ", err = " + "runtime.ProcessZlib(k." + attr.Name() + ")")
+			buffer.WriteLine("bs, err = " + "runtime.ProcessZlib(bs)")
 		default:
-			buffer.WriteLine("k." + attr.Name() + " = " + goExpr(cmd, "")[2:len(goExpr(cmd, ""))-1] + "k." + attr.Name() + ", " + parameterList + ")")
+			buffer.WriteLine("bs = " + goExpr(cmd, "")[2:len(goExpr(cmd, ""))-1] + "bs, " + parameterList + ")")
 		}
+	}
+
+	if attr.Type.CustomType {
+		buffer.WriteLine("k." + attr.Name() + " = &bs")
+	} else {
+		buffer.WriteLine("k." + attr.Name() + " = bs")
 	}
 
 	return
@@ -361,6 +434,10 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 func (k *Type) String(typeName string, parent string, root string) string {
 	var buffer LineBuffer
+
+	if val, ok := endianess[k.Meta.Endian]; ok {
+		endian = val
+	}
 
 	// print doc string
 	if k.Doc != "" {
@@ -391,10 +468,6 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker) (err error) {")
 	buffer.WriteLine("if decoder != nil && decoder.Err() != nil { return decoder.Err() }")
-
-	if val, ok := endianess[k.Meta.Endian]; ok {
-		endian = val
-	}
 	buffer.WriteLine("if decoder == nil { decoder = runtime.New(reader) }")
 	buffer.WriteLine("k.DecodeAncestors(k, k)")
 	buffer.WriteLine("return decoder.Err()")
@@ -406,7 +479,7 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("}")
 
 	// decode ancestors function
-	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(parent interface{}, root interface{}) () {")
+	buffer.WriteLine("func (k *" + typeName + ") DecodeAncestors(parent interface{}, root interface{}) (err error) {")
 	buffer.WriteLine("if decoder.Err() != nil { return }")
 	buffer.WriteLine("k.parent = parent")
 	buffer.WriteLine("k.Root = root.(*" + root + ")")
@@ -414,6 +487,7 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	for _, attr := range k.Seq {
 		buffer.WriteString(k.InitAttr(attr))
 	}
+	buffer.WriteLine("return")
 	buffer.WriteLine("}")
 
 	// create getter
@@ -428,7 +502,11 @@ func (k *Type) String(typeName string, parent string, root string) string {
 		inst.ID = name
 		buffer.WriteLine("func (k *" + typeName + ") " + strcase.ToCamel(inst.Name()) + "() (value " + inst.DataType() + ") {")
 		buffer.WriteLine("if !k." + inst.Name() + "Set {")
-		buffer.WriteString(k.InitAttr(inst))
+		init := k.InitAttr(inst)
+		if strings.Contains(init, "err") {
+			buffer.WriteLine("var err error")
+		}
+		buffer.WriteString(init)
 		buffer.WriteLine("k." + inst.Name() + "Set = true")
 		buffer.WriteLine("}")
 		buffer.WriteLine("return k." + inst.Name())
