@@ -160,7 +160,7 @@ func isIdentifierPart(tok rune, casting bool) bool {
 			return true
 		}
 	}
-	return tok == scanner.Ident || tok == '.' || tok == '"' || tok == '_' || tok == '[' || tok == ']'
+	return tok == scanner.Ident || tok == '.' || tok == '"' || tok == '_' || tok == '[' || tok == ']' || tok == '\''
 }
 
 func goExprIdent(expr, casttype, current_attr string) string {
@@ -181,7 +181,6 @@ func goExprIdent(expr, casttype, current_attr string) string {
 		case "_":
 			ret = ret[:len(ret)-1] + "." + current_attr
 		case "\"":
-			// fmt.Println("....")
 			ret += "\""
 		case ".":
 			ret += "."
@@ -274,6 +273,9 @@ func goExprAttr(expr, casttype, current_attr string) string {
 	// replace binary values
 	re := regexp.MustCompile("0[bB][0-9]+")
 	expr = re.ReplaceAllStringFunc(expr, bitString)
+
+	re = regexp.MustCompile("'")
+	expr = re.ReplaceAllString(expr, "\"")
 
 	var s scanner.Scanner
 	s.Init(strings.NewReader(expr))

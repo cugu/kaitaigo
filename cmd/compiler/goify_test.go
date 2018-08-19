@@ -132,6 +132,11 @@ func TestGoify(t *testing.T) {
 			GoCode: "len(k.Str1())",
 			Type:   "int64",
 		},
+		Result{
+			Input:  "'foo'",
+			GoCode: "\"foo\"",
+			Type:   "[]byte",
+		},
 	}
 
 	for _, result := range tests {
