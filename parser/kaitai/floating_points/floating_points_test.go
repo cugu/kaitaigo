@@ -14,35 +14,27 @@ func TestFloatingPoints(t *testing.T) {
 	}
 
 	var h FloatingPoints
-	err = h.Read(s, &h, &h)
+	err = h.Decode(f)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	delta := 1e-6
 
-	assert.Equal(t, float32(0.5), h.SingleValue, "They should be equal")
-	assert.Equal(t, float32(0.5), h.SingleValueBe, "They should be equal")
-	assert.Equal(t, 0.25, h.DoubleValue, "They should be equal")
-	assert.Equal(t, 0.25, h.DoubleValueBe, "They should be equal")
+	assert.Equal(t, float32(0.5), h.SingleValue(), "They should be equal")
+	assert.Equal(t, float32(0.5), h.SingleValueBe(), "They should be equal")
+	assert.Equal(t, float64(0.25), h.DoubleValue(), "They should be equal")
+	assert.Equal(t, float64(0.25), h.DoubleValueBe(), "They should be equal")
 
-	assert.InDelta(t, 1.2345, h.ApproximateValue, delta)
+	assert.InDelta(t, float32(1.2345), h.ApproximateValue(), delta)
 
-	singleValuePlusInt, err := h.SingleValuePlusInt()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.InDelta(t, 1.5, singleValuePlusInt, delta)
+	singleValuePlusInt := h.SingleValuePlusInt()
+	assert.InDelta(t, float32(1.5), singleValuePlusInt, delta)
 
-	singleValuePlusFloat, err := h.SingleValuePlusFloat()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.InDelta(t, 1.0, singleValuePlusFloat, delta)
+	singleValuePlusFloat := h.SingleValuePlusFloat()
+	assert.InDelta(t, float32(1.0), singleValuePlusFloat, delta)
 
-	doubleValuePlusFloat, err := h.DoubleValuePlusFloat()
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.InDelta(t, 0.3, doubleValuePlusFloat, delta)
+	doubleValuePlusFloat := h.DoubleValuePlusFloat()
+	assert.InDelta(t, float32(0.3), doubleValuePlusFloat, delta)
+
 }

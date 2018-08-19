@@ -32,5 +32,5 @@ func (d *Decoder) UnsetErr() {
 }
 
 type KSYDecoder interface {
-	DecodeAncestors(interface{}, interface{})
+	DecodeAncestors(interface{}, interface{}) error
 }

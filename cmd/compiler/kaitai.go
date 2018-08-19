@@ -187,6 +187,10 @@ func (k *Type) InitVar(attr Attribute, dataType string, init bool) (goCode strin
 	}
 
 	terminated := attr.Terminator != "" || attr.Type.Type == "strz"
+	term := "byte(0)"
+	if attr.Terminator != "" {
+		term = goExpr(attr.Terminator, "")
+	}
 	resetPos := (attr.Size == "" && terminated) || attr.Size != ""
 
 	if resetPos {
@@ -203,10 +207,7 @@ func (k *Type) InitVar(attr Attribute, dataType string, init bool) (goCode strin
 			buffer.WriteLine("bs, err = ioutil.ReadAll(decoder)")
 			buffer.WriteLine("decoder.SetErr(err)")
 		} else if terminated {
-			term := "byte(0)"
-			if attr.Terminator != "" {
-				term = goExpr(attr.Terminator, "")
-			}
+
 			if attr.Size == "" {
 				buffer.WriteLine("bs, err = bufio.NewReader(decoder).ReadBytes(" + term + ")")
 				buffer.WriteLine("if err != nil && err == io.EOF { err = nil }")
@@ -238,7 +239,7 @@ func (k *Type) InitVar(attr Attribute, dataType string, init bool) (goCode strin
 
 	// term
 	if terminated && attr.Size != "" {
-		buffer.WriteLine("i := bytes.IndexByte(bs, " + goExpr(attr.Terminator, "") + ")")
+		buffer.WriteLine("i := bytes.IndexByte(bs, " + term + ")")
 		buffer.WriteLine("if i != -1 {")
 		buffer.WriteLine("bs = bs[:i+1]")
 		buffer.WriteLine("}")
@@ -330,7 +331,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 			if attr.RepeatExpr == "" {
 				panic("RepeatExpr is missing") // TODO: move to parsing
 			}
-			before = "i < int(" + goExpr(attr.RepeatExpr, "") + ")"
+			before = "index < int(" + goExpr(attr.RepeatExpr, "") + ")"
 			fall = true
 			fallthrough
 		case "until":
@@ -338,7 +339,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 				if attr.RepeatUntil == "" {
 					panic("RepeatUntil is missing") // TODO: move to parsing
 				}
-				until = goExprAttr(attr.RepeatUntil, "", attr.Name()+"[i]")
+				until = goExprAttr(attr.RepeatUntil, "", attr.Name()+"[index]")
 			}
 			fallthrough
 		case "eos":
@@ -347,7 +348,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 				buffer.WriteLine("k." + attr.Name() + " = " + attr.DataType() + "{}")
 			}
 
-			buffer.WriteLine("for i := 0; " + before + "; i++ {")
+			buffer.WriteLine("for index := 0; " + before + "; index++ {")
 
 			buffer.WriteString(k.InitVar(attr, attr.ChildType(), true))
 
@@ -359,7 +360,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 			if strings.HasPrefix(attr.DataType(), "[]") {
 				buffer.WriteLine("k." + attr.Name() + " = append(k." + attr.Name() + ", bs)")
 			} else {
-				buffer.WriteLine("k." + attr.Name() + "[i] = bs")
+				buffer.WriteLine("k." + attr.Name() + "[index] = bs")
 			}
 
 			// break on repeat-until

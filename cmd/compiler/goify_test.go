@@ -98,6 +98,11 @@ func TestGoify(t *testing.T) {
 			Type:   "[]byte",
 		},
 		Result{
+			Input:  "-2.7",
+			GoCode: "-2.7",
+			Type:   "float64",
+		},
+		Result{
 			Input:  "2 < 1",
 			GoCode: "2 < 1",
 			Type:   "bool",

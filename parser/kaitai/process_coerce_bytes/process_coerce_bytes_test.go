@@ -22,8 +22,9 @@ func TestProcessCoerceBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.EqualValues(t, 0, r.Records()[0].Flag())
-	assert.EqualValues(t, []uint8{65, 65, 65, 65}, r.Records()[0].Buf())
-	assert.EqualValues(t, 1, r.Records()[1].Flag())
-	assert.EqualValues(t, []uint8{66, 66, 66, 66}, r.Records()[1].Buf())
+	records := r.Records()
+	assert.EqualValues(t, 0, records[0].Flag())
+	assert.EqualValues(t, []uint8{65, 65, 65, 65}, records[0].Buf())
+	assert.EqualValues(t, 1, records[1].Flag())
+	assert.EqualValues(t, []uint8{66, 66, 66, 66}, records[1].Buf())
 }

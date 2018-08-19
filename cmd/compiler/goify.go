@@ -81,7 +81,7 @@ func getExprType(expr ast.Expr) (s string, r bool) {
 			if x.Op == token.NOT {
 				s = "bool"
 			} else {
-				s = "int64"
+				s, r = getExprType(x.X)
 			}
 			return false
 		case *ast.BinaryExpr:
@@ -125,6 +125,8 @@ func getType(expr string) (t string) {
 		return "bool"
 	case "":
 		return "[]byte"
+	case "float":
+		return "float64"
 	default:
 		return s
 	}
@@ -212,8 +214,35 @@ func goExprIdent(expr, casttype, current_attr string) string {
 			ret = "strconv.Itoa(int(" + ret[:len(ret)-1] + "))"
 		case "as":
 			cast = true
+		case "first":
+			if expr == "first" {
+				ret += strcase.ToCamel(s.TokenText())
+				if !cast {
+					ret += "()"
+				}
+			} else {
+				ret = ret[:len(ret)-1] + "[0]"
+			}
+		case "last":
+			if expr == "last" {
+				ret += strcase.ToCamel(s.TokenText())
+				if !cast {
+					ret += "()"
+				}
+			} else {
+				ret = ret[:len(ret)-1] + "[:len(" + ret[:len(ret)-1] + ")-1]"
+			}
 		case "length":
 			if expr == "length" {
+				ret += strcase.ToCamel(s.TokenText())
+				if !cast {
+					ret += "()"
+				}
+			} else {
+				ret = "len(" + ret[:len(ret)-1] + ")"
+			}
+		case "size":
+			if expr == "size" {
 				ret += strcase.ToCamel(s.TokenText())
 				if !cast {
 					ret += "()"
