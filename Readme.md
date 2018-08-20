@@ -1,9 +1,57 @@
 # kaitai.go
 
-kaitai.go is an [alternative](https://github.com/kaitai-io/kaitai_struct_compiler) compiler, that converts [Kaitai Struct](http://kaitai.io/) files into [Go](https://golang.org/) parsers.
+kaitai.go is a compiler and runtime to create Go parsers from [Kaitai Struct](http://kaitai.io/) files.
 
+## Installation
+```sh
+go get gitlab.com/cugu/kaitai.go
+```
 
-## Supported kaitai features:
+## Usage
+
+### 1. Create ksy file
+
+**my_format.ksy**
+```yaml
+meta:
+  id: my_format
+seq:
+  - id: data_size
+    type: u1
+  - id: data
+    size: data_size 
+```
+
+### 2. Create go parser
+
+```sh
+kaitai.go test.ksy # creates my_format.ksy.go
+```
+
+### 3. Use parser
+
+**main.go**
+```go
+package main
+
+import (
+	"bytes"
+	"log"
+)
+
+func main() {
+    f := bytes.NewReader([]byte("\x05Hello world!"))
+    var r MyFormat
+    err := r.Decode(f) // Decode takes any io.ReadSeeker
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Print(string(r.Data())) // Prints "Hello"
+}
+```
+## kaitai.go features
+
+### Supported kaitai features:
 
  - Type specification
     - meta
@@ -37,13 +85,13 @@ kaitai.go is an [alternative](https://github.com/kaitai-io/kaitai_struct_compile
 
 _*partially_
 
-## Additional features:
+### Additional features:
 
-### whence
+#### whence
 
 Can be used togher with `pos` the define the reference point of the position. Valid values are `seek_set`, `seek_end` and `seek_cur` (default).
 
-## Limitations
+### Limitations
 
  - No _io (Most uses can be replaced with [whence](#whence))
  - Accessing nested types with `::` is not allowed
