@@ -9,29 +9,26 @@ go get gitlab.com/cugu/kaitai.go
 
 ## Usage
 
-### 1. Create ksy file
+First we need a .ksy file. We take this simple example, but there are [many more](http://formats.kaitai.io/).
 
-**my_format.ksy**
+****
 ```yaml
+# my_format.ksy
 meta:
   id: my_format
 seq:
   - id: data_size
     type: u1
   - id: data
-    size: data_size 
+    size: data_size
 ```
 
-### 2. Create go parser
+To create the Go code we use the kaitai.go command: `kaitai.go my_format.ksy`. This creates the ready to use `my_format.ksy.go`.
 
-```sh
-kaitai.go test.ksy # creates my_format.ksy.go
-```
+The parser can be used in other scripts like the following. With `go run main.go my_format.ksy.go` we can run the script an use our new parser.
 
-### 3. Use parser
-
-**main.go**
 ```go
+// main.go
 package main
 
 import (
@@ -40,15 +37,18 @@ import (
 )
 
 func main() {
-    f := bytes.NewReader([]byte("\x05Hello world!"))
-    var r MyFormat
-    err := r.Decode(f) // Decode takes any io.ReadSeeker
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Print(string(r.Data())) // Prints "Hello"
+	f := bytes.NewReader([]byte("\x05Hello world!"))
+	var r MyFormat
+	err := r.Decode(f) // Decode takes any io.ReadSeeker
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Print(string(r.Data())) // Prints "Hello"
 }
 ```
+
+---
+
 ## kaitai.go features
 
 ### Supported kaitai features:

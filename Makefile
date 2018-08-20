@@ -1,26 +1,40 @@
-all: clean install code test
+all: clean lint install generate_code test
+
+ex:
+	goimports -w cmd/kaitai.go
+	goimports -w runtime
+	go install gitlab.com/cugu/kaitai.go/cmd/...
+	@kaitai.go example/my_format.ksy
+	@cd example && go build . && ./example
 
 clean:
 	@printf '\nClean\n'
 	find tests -name "*.ksy.*" -type f -delete
+	goimports -w cmd/kaitai.go
+	goimports -w runtime
+
+test:
+	@go test gitlab.com/cugu/kaitai.go/cmd/...
+
+lint:
+	@printf '\nLint\n'
+	gometalinter.v2 cmd/...
+	gometalinter.v2 runtime/...
+
+build:
+	@printf '\n\nBuild\n'
+	go build gitlab.com/cugu/kaitai.go/cmd/...
 
 install:
 	@printf '\n\nInstall\n'
-	goimports -w cmd/kaitai.go
-	goimports -w runtime
 	go install gitlab.com/cugu/kaitai.go/cmd/...
 
-code:
+generate_code:
 	@printf '\n\nCode\n'
 	@kaitai.go `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
-test: compiler_test ks_tests missing_tests failing_tests
-
-compiler_test:
-	@printf '\n\nTest\n'
-	@go test gitlab.com/cugu/kaitai.go/cmd/...
-
 ks_tests:
+	@printf '\n\nTest\n'
 	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/buffered_struct \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_be \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_le \
@@ -184,5 +198,3 @@ failing_tests:
 
 	@# Will not be fixed
 	@# go test -v gitlab.com/cugu/kaitai.go/tests/kaitai/nested_same_name2 	# dublicate names are not allowed
-
-

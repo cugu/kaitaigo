@@ -1,0 +1,25 @@
+stages:
+  - unittest
+  - build
+  - test
+
+test:
+  stage: unittest
+  script: make test
+
+lint:
+  stage: unittest
+  script: make lint
+
+build:
+  stage: build
+  script: make build
+  artifacts:
+    paths:
+      - kaitai.go
+
+ks_tests:
+  stage: test
+  script:
+    - make generate_code
+    - make ks_tests

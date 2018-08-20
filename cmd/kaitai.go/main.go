@@ -19,9 +19,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func YAMLUnmarshal(name string, source []byte, m interface{}, path string) error {
+func YAMLUnmarshal(name string, source []byte, m interface{}, path string, debug bool) error {
 	err := yaml.Unmarshal(source, m)
-	if err != nil {
+	if err != nil || !debug {
 		return err
 	}
 	return ioutil.WriteFile(
@@ -31,106 +31,95 @@ func YAMLUnmarshal(name string, source []byte, m interface{}, path string) error
 	)
 }
 
-func createGofile(filepath string, pckg string) error {
-	filename := path.Base(filepath)
-	baseStructSnake := strings.Replace(filename, ".ksy", "", 1)
-	baseStruct := strcase.ToCamel(baseStructSnake)
-
-	enumTypes = map[string]string{}
-	parents = map[string]string{}
-	kaitaiTypes = map[string]string{
-		"Itoa": "[]byte",
-		"len":  "int64",
-	}
+func createGofile(ksyPath, pkg string, debug bool) error {
+	filename := path.Base(ksyPath)
+	dir := filepath.Dir(ksyPath)
 
 	// setup logging
-	logfile, err := os.Create(path.Join(pckg, filename+".log"))
-	if err != nil {
-		return errors.Wrap(err, "create logfile")
+	if debug {
+		logfile, err := os.Create(path.Join(dir, filename+".log"))
+		if err != nil {
+			return errors.Wrap(err, "create logfile")
+		}
+		defer func() {
+			logfile.Sync()
+			logfile.Close()
+		}()
+		log.SetOutput(io.MultiWriter(os.Stderr, logfile))
 	}
-	defer func() {
-		logfile.Sync()
-		logfile.Close()
-	}()
 
-	log.SetOutput(io.MultiWriter(os.Stderr, logfile))
-
-	log.Println("generate", filepath)
+	// start generation
+	log.Println("generate", ksyPath)
 
 	// read source
-	source, err := ioutil.ReadFile(filepath)
+	source, err := ioutil.ReadFile(ksyPath)
 	if err != nil {
 		return errors.Wrap(err, "read source")
 	}
 
 	// parse generic
 	m := make(map[interface{}]interface{})
-	err = YAMLUnmarshal("generic", source, &m, path.Join(pckg, filename))
+	err = YAMLUnmarshal("generic", source, &m, path.Join(dir, filename), debug)
 	if err != nil {
 		return errors.Wrap(err, "parse generic yaml")
 	}
 
 	// parse kaitai
 	kaitai := Type{}
-	err = YAMLUnmarshal("kaitai", source, &kaitai, path.Join(pckg, filename))
+	enumTypes = map[string]string{}
+	parents = map[string]string{}
+	kaitaiTypes = map[string]string{
+		"Itoa": "[]byte",
+		"len":  "int64",
+	}
+	err = YAMLUnmarshal("kaitai", source, &kaitai, path.Join(dir, filename), debug)
 	if err != nil {
 		return errors.Wrap(err, "parse kaitai yaml")
 	}
+	baseStruct := strcase.ToCamel(kaitai.Meta.ID)
 
 	setupMap(&kaitai, baseStruct)
-	// fmt.Printf("%#v\n", kaitaiTypes)
 	setupMap(&kaitai, baseStruct)
-	// fmt.Printf("%#v\n", kaitaiTypes)
 
 	// write go code
 	var buffer LineBuffer
-
 	buffer.WriteLine("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
-
-	parts := strings.Split(pckg, "/")
-	lastpart := parts[len(parts)-1]
-	buffer.WriteLine("package " + lastpart)
-	buffer.WriteLine("import (")
-	for _, pkg := range []string{"fmt", "io", "os", "log", "gitlab.com/cugu/kaitai.go/runtime"} {
-		buffer.WriteLine("\"" + pkg + "\"")
-	}
-	buffer.WriteLine(")")
+	buffer.WriteLine("package " + pkg)
+	buffer.WriteLine("import (\"gitlab.com/cugu/kaitai.go/runtime\")")
 	buffer.WriteLine("var decoder *runtime.Decoder")
-
 	buffer.WriteLine(kaitai.String(baseStruct, baseStruct, baseStruct))
 
+	// format and add imports
 	formated, err := imports.Process("", []byte(buffer.String()), nil)
 	if err != nil {
-		log.Printf("Format error (%s): %s", filepath, err)
+		log.Printf("Format error (%s): %s", ksyPath, err)
 		formated = []byte(buffer.String())
 	}
-	err = ioutil.WriteFile(path.Join(pckg, filename+".go"), formated, 0644)
+	err = ioutil.WriteFile(path.Join(dir, filename+".go"), formated, 0644)
 
-	if err != nil {
-		return errors.Wrap(err, "create go file")
-	}
-	return nil
-
+	return errors.Wrap(err, "create go file")
 }
 
-func handleFile(filename string) error {
+func handleFile(filename, pkg string, debug bool) error {
 	if strings.HasSuffix(filename, ".ksy") {
-		return createGofile(filename, filepath.Dir(filename))
+		return createGofile(filename, pkg, debug)
 	}
 	return nil
 }
 
 func main() {
+	pkg := flag.String("pkg", "main", "define go package")
+	debug := flag.Bool("debug", false, "debug output")
 	flag.Parse()
 	for _, filename := range flag.Args() {
 		var err error
 		if strings.HasSuffix(filename, "/...") {
 			recPath := strings.Replace(filename, "/...", "", 1)
 			err = filepath.Walk(recPath, func(path string, f os.FileInfo, err error) error {
-				return handleFile(path)
+				return handleFile(path, *pkg, *debug)
 			})
 		} else {
-			err = handleFile(filename)
+			err = handleFile(filename, *pkg, *debug)
 		}
 		if err != nil {
 			log.Println(err)
