@@ -7,8 +7,7 @@ ex:
 
 dep:
 	@printf '\nGet dependencies\n'
-	go get -v -d gitlab.com/cugu/kaitai.go/cmd/...
-	go get -v -d gitlab.com/cugu/kaitai.go/runtime/...
+	go get github.com/iancoleman/strcase github.com/kr/pretty github.com/pkg/errors golang.org/x/tools/imports gopkg.in/yaml.v2
 
 clean:
 	@printf '\nClean\n'
