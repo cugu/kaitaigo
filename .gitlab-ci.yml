@@ -30,5 +30,5 @@ build:
 ks_tests:
   stage: test
   script:
-    - kaitai.go `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+    - ./kaitai.go `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     - make ks_tests
