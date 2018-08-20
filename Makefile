@@ -1,11 +1,14 @@
 all: clean lint install generate_code test
 
 ex:
-	goimports -w cmd/kaitai.go
-	goimports -w runtime
 	go install gitlab.com/cugu/kaitai.go/cmd/...
-	@kaitai.go example/my_format.ksy
-	@cd example && go build . && ./example
+	kaitai.go example/my_format.ksy
+	cd example && go build . && ./example
+
+dep:
+	@printf '\nGet dependencies\n'
+	go get -v -d gitlab.com/cugu/kaitai.go/cmd/...
+	go get -v -d gitlab.com/cugu/kaitai.go/runtime/...
 
 clean:
 	@printf '\nClean\n'
@@ -14,7 +17,7 @@ clean:
 	goimports -w runtime
 
 test:
-	@go test gitlab.com/cugu/kaitai.go/cmd/...
+	go test gitlab.com/cugu/kaitai.go/cmd/...
 
 lint:
 	@printf '\nLint\n'
@@ -31,11 +34,11 @@ install:
 
 generate_code:
 	@printf '\n\nCode\n'
-	@kaitai.go `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+	kaitai.go `find tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
 
 ks_tests:
 	@printf '\n\nTest\n'
-	@go test gitlab.com/cugu/kaitai.go/tests/kaitai/buffered_struct \
+	go test gitlab.com/cugu/kaitai.go/tests/kaitai/buffered_struct \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_be \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/bcd_user_type_le \
 		gitlab.com/cugu/kaitai.go/tests/kaitai/bytes_pad_term \

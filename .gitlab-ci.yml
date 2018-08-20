@@ -3,6 +3,11 @@ stages:
   - build
   - test
 
+before_script:
+  - mkdir -p /go/src/gitlab.com/cugu /go/src/_/builds
+  - cp -r $CI_PROJECT_DIR /go/src/gitlab.com/cugu/kaitai.go
+  - ln -s /go/src/gitlab.com/cugu /go/src/_/builds/cugu
+
 test:
   stage: unittest
   script: make test
