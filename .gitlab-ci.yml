@@ -1,3 +1,5 @@
+image: golang
+
 stages:
   - unittest
   - build
@@ -15,6 +17,7 @@ test:
 lint:
   stage: unittest
   script: make lint
+  allow_failure: true
 
 build:
   stage: build
