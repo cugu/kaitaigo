@@ -122,7 +122,7 @@ func main() {
 				return handleFile(path, filepath.Dir(abspath), *debug)
 			})
 		} else {
-			abspath, err := filepath.Abs(path)
+			abspath, err := filepath.Abs(filename)
 			if err == nil {
 				err = handleFile(filename, filepath.Dir(abspath), *debug)
 			}
