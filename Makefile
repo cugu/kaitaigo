@@ -22,6 +22,7 @@ test:
 lint:
 	@printf '\nLint\n'
 	go get -u gopkg.in/alecthomas/gometalinter.v2
+	gometalinter.v2 --install
 	gometalinter.v2 cmd/...
 	gometalinter.v2 runtime/...
 
