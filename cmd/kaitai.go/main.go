@@ -115,10 +115,17 @@ func main() {
 		if strings.HasSuffix(filename, "/...") {
 			recPath := strings.Replace(filename, "/...", "", 1)
 			err = filepath.Walk(recPath, func(path string, f os.FileInfo, err error) error {
-				return handleFile(path, filepath.Dir(filepath.Abs(path)), *debug)
+				abspath, err := filepath.Abs(path)
+				if err != nil {
+					return err
+				}
+				return handleFile(path, filepath.Dir(abspath), *debug)
 			})
 		} else {
-			err = handleFile(filename, filepath.Dir(filepath.Abs(filename)), *debug)
+			abspath, err := filepath.Abs(path)
+			if err == nil {
+				err = handleFile(filename, filepath.Dir(abspath), *debug)
+			}
 		}
 		if err != nil {
 			log.Println(err)
