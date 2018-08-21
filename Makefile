@@ -1,4 +1,4 @@
-all: clean lint install generate_code test
+all: clean test install generate_code ks_tests
 
 ex:
 	go install gitlab.com/cugu/kaitai.go/cmd/...

@@ -119,12 +119,12 @@ func main() {
 				if err != nil {
 					return err
 				}
-				return handleFile(path, filepath.Dir(abspath), *debug)
+				return handleFile(path, filepath.Base(filepath.Dir(abspath)), *debug)
 			})
 		} else {
 			abspath, err := filepath.Abs(filename)
 			if err == nil {
-				err = handleFile(filename, filepath.Dir(abspath), *debug)
+				err = handleFile(filename, filepath.Base(filepath.Dir(abspath)), *debug)
 			}
 		}
 		if err != nil {
