@@ -104,3 +104,10 @@ Can be used togher with `pos` the define the reference point of the position. Va
  - -2 % 8 = -2
  - xor, ror, rol and zlib only work on bytes
  - float + int fails
+
+
+## Licenses
+The kaitai.go compiler (/cmd) is licensed as [GPLv3](licences/gpl-3.0.txt).
+The runtime (/runtime) is licensed under [MIT license](licences/mit.txt).
+Everything else is licensed as [GPLv3](licences/gpl-3.0.txt).
+
