@@ -108,7 +108,6 @@ func handleFile(filename, pkg string, debug bool) error {
 }
 
 func main() {
-	pkg := flag.String("pkg", "main", "define go package")
 	debug := flag.Bool("debug", false, "debug output")
 	flag.Parse()
 	for _, filename := range flag.Args() {
@@ -116,10 +115,10 @@ func main() {
 		if strings.HasSuffix(filename, "/...") {
 			recPath := strings.Replace(filename, "/...", "", 1)
 			err = filepath.Walk(recPath, func(path string, f os.FileInfo, err error) error {
-				return handleFile(path, filepath.Dir(path), *debug)
+				return handleFile(path, filepath.Dir(filepath.Abs(path)), *debug)
 			})
 		} else {
-			err = handleFile(filename, *pkg, *debug)
+			err = handleFile(filename, filepath.Dir(filepath.Abs(filename)), *debug)
 		}
 		if err != nil {
 			log.Println(err)
