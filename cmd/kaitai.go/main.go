@@ -116,7 +116,7 @@ func main() {
 		if strings.HasSuffix(filename, "/...") {
 			recPath := strings.Replace(filename, "/...", "", 1)
 			err = filepath.Walk(recPath, func(path string, f os.FileInfo, err error) error {
-				return handleFile(path, *pkg, *debug)
+				return handleFile(path, filepath.Dir(path), *debug)
 			})
 		} else {
 			err = handleFile(filename, *pkg, *debug)
