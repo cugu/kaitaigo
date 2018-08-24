@@ -85,7 +85,7 @@ func createGofile(ksyPath, pkg string, debug bool) error {
 	var buffer LineBuffer
 	buffer.WriteLine("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
 	buffer.WriteLine("package " + pkg)
-	buffer.WriteLine("import (\"gitlab.com/cugu/kaitai.go/runtime\")")
+	buffer.WriteLine("import (\"gitlab.com/dfir/binary/kaitai.go/runtime\")")
 	buffer.WriteLine("var decoder *runtime.Decoder")
 	buffer.WriteLine(kaitai.String(baseStruct, baseStruct, baseStruct))
 

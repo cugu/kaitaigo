@@ -6,9 +6,9 @@ stages:
   - test
 
 before_script:
-  - mkdir -p /go/src/gitlab.com/cugu /go/src/_/builds
-  - cp -r $CI_PROJECT_DIR /go/src/gitlab.com/cugu/kaitai.go
-  - ln -s /go/src/gitlab.com/cugu /go/src/_/builds/cugu
+  - mkdir -p /go/src/gitlab.com/dfir/binary /go/src/_/builds
+  - cp -r $CI_PROJECT_DIR /go/src/gitlab.com/dfir/binary/kaitai.go
+  - ln -s /go/src/gitlab.com/dfir/binary /go/src/_/builds/cugu
   - make dep
 
 test:
@@ -30,5 +30,5 @@ build:
 ks_tests:
   stage: test
   script:
-    - ./kaitai.go `find /go/src/gitlab.com/cugu/kaitai.go/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+    - ./kaitai.go `find /go/src/gitlab.com/dfir/binary/kaitai.go/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     - make ks_tests

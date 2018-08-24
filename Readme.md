@@ -4,7 +4,7 @@ kaitai.go is a compiler and runtime to create Go parsers from [Kaitai Struct](ht
 
 ## Installation
 ```sh
-go get gitlab.com/cugu/kaitai.go
+go get gitlab.com/dfir/binary/kaitai.go
 ```
 
 ## Usage
