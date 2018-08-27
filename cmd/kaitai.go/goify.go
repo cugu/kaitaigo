@@ -204,7 +204,7 @@ func goExprIdent(expr, casttype, current_attr string) string {
 		case "_parent":
 			ret += "Parent()"
 		case "_root":
-			ret += "Root"
+			ret += "Root()"
 		case "_index":
 			ret += "index"
 		case "to_i":

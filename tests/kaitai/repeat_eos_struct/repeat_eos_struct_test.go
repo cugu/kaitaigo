@@ -4,6 +4,7 @@ package repeat_eos_struct
 
 import (
 	"os"
+	"runtime/debug"
 
 	"testing"
 
@@ -19,6 +20,7 @@ func TestRepeatEosStruct(t *testing.T) {
 	var r RepeatEosStruct
 	err = r.Decode(f)
 	if err != nil {
+		debug.PrintStack()
 		t.Fatal(err)
 	}
 

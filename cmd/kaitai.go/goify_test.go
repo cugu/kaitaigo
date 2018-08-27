@@ -20,7 +20,7 @@ func TestGoify(t *testing.T) {
 	}
 
 	tests := []Result{
-		// "_root._io":                                                       "k.Root.IO()",
+		// "_root._io":                                                       "k.Root().IO()",
 		// "_io.size - _root.sector_size":                                    "k.IO().Size() - k.Root.SectorSize()",
 		Result{
 			Input:  "true",
@@ -54,17 +54,17 @@ func TestGoify(t *testing.T) {
 		},
 		Result{
 			Input:  "entries_start * _root.sector_size",
-			GoCode: "k.EntriesStart() * k.Root.SectorSize()",
+			GoCode: "k.EntriesStart() * k.Root().SectorSize()",
 			Type:   "int64",
 		},
 		Result{
 			Input:  "_root.block0.body.as<container_superblock>.block_size",
-			GoCode: "k.Root.Block0().Body().(ContainerSuperblock).BlockSize()",
+			GoCode: "k.Root().Block0().Body().(ContainerSuperblock).BlockSize()",
 			Type:   "runtime.KSYDecoder",
 		},
 		Result{
 			Input:  "(xp_desc_base + xp_desc_index) * _root.block_size",
-			GoCode: "(k.XpDescBase() + k.XpDescIndex()) * k.Root.BlockSize()",
+			GoCode: "(k.XpDescBase() + k.XpDescIndex()) * k.Root().BlockSize()",
 			Type:   "int64",
 		},
 		Result{
@@ -79,7 +79,7 @@ func TestGoify(t *testing.T) {
 		},
 		Result{
 			Input:  "_root.block_size - data_offset - 40 * (_parent.node_type & 1)",
-			GoCode: "k.Root.BlockSize() - k.DataOffset() - 40*(k.Parent().NodeType()&1)",
+			GoCode: "k.Root().BlockSize() - k.DataOffset() - 40*(k.Parent().NodeType()&1)",
 			Type:   "int64",
 		},
 		Result{
