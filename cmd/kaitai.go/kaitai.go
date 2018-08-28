@@ -206,16 +206,14 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 		}
 		if attr.SizeEos != "" {
 			buffer.WriteLine("elem, err = ioutil.ReadAll(decoder)")
-			buffer.WriteLine("decoder.SetErr(err)")
 		} else if terminated {
 
 			if attr.Size == "" {
 				buffer.WriteLine("elem, err = bufio.NewReader(decoder).ReadBytes(" + term + ")")
-				buffer.WriteLine("if err != nil && err == io.EOF { decoder.UnsetErr(); err = nil }")
+				buffer.WriteLine("if err != nil && err == io.EOF { err = nil }")
 			} else {
 				// term & size
 				buffer.WriteLine("_, err = decoder.Read(elem)")
-				buffer.WriteLine("decoder.SetErr(err)")
 			}
 
 			// eos
@@ -223,12 +221,12 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 				attr.EosError = "true"
 			}
 			buffer.WriteLine("if err != nil && (err != io.EOF || " + goExpr(attr.EosError, "") + ") {")
-			buffer.WriteLine("decoder.SetErr(err)")
 			buffer.WriteLine("return")
 			buffer.WriteLine("}")
+			buffer.WriteLine("err = nil")
+
 		} else {
 			buffer.WriteLine("err = binary.Read(decoder, " + endian + ", &elem)")
-			buffer.WriteLine("decoder.SetErr(err)")
 		}
 	} else {
 		buffer.WriteLine("err = elem.Decode(nil, k, k.Root())")
@@ -318,7 +316,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 			buffer.WriteLine("decoder.Seek(0, io.SeekStart)")
 		}
 		buffer.WriteLine("_, err = decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
-		buffer.WriteLine("if err != nil {decoder.SetErr(err); return}")
+		buffer.WriteLine("if err != nil { return }")
 		// restore position
 		defer buffer.WriteLine("decoder.Seek(pos" + attr.Name() + ", io.SeekStart)")
 	}
@@ -356,8 +354,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 			// break on error
 			buffer.WriteLine("if err != nil {")
-			buffer.WriteLine("if err == io.EOF { err = nil; decoder.UnsetErr()")
-			buffer.WriteLine("} else { decoder.SetErr(err) }")
+			buffer.WriteLine("if err == io.EOF { err = nil }")
 			buffer.WriteLine("break")
 			buffer.WriteLine("}")
 
@@ -482,22 +479,22 @@ func (k *Type) String(typeName string, parent string, root string) string {
 	buffer.WriteLine("}")
 
 	// decode function
-	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker, anchestors ...interface{}) (err error) {")
-	buffer.WriteLine("if decoder != nil && decoder.Err() != nil { return decoder.Err() }")
+	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker, ancestors ...interface{}) (err error) {")
 	buffer.WriteLine("if decoder == nil {")
 	buffer.WriteLine("if reader == nil {")
 	buffer.WriteLine("panic(\"Neither decoder nor reader are set.\")")
 	buffer.WriteLine("}")
-	buffer.WriteLine("decoder = runtime.New(reader) ")
+	buffer.WriteLine("decoder = reader ")
 	buffer.WriteLine("}")
 
-	buffer.WriteLine("if len(anchestors) > 2 {panic(\"To many anchestors are given.\")}")
-	buffer.WriteLine("if len(anchestors) == 2 {")
-	buffer.WriteLine("k.parent = anchestors[0]")
-	buffer.WriteLine("k.root = anchestors[1]")
-	buffer.WriteLine("} else {")
+	buffer.WriteLine("if len(ancestors) == 2 {")
+	buffer.WriteLine("k.parent = ancestors[0]")
+	buffer.WriteLine("k.root = ancestors[1]")
+	buffer.WriteLine("} else if len(ancestors) == 0 {")
 	buffer.WriteLine("k.parent = k")
 	buffer.WriteLine("k.root = k")
+	buffer.WriteLine("} else {")
+	buffer.WriteLine("panic(\"To many ancestors are given.\")")
 	buffer.WriteLine("}")
 
 	for _, attr := range k.Seq {
