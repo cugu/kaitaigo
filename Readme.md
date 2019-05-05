@@ -1,19 +1,19 @@
 ⚠️ **This project is not activly maintained and Go support in the official [Kaitai Struct compiler](https://github.com/kaitai-io/kaitai_struct_compiler) increased. More information in the [issue for Go language support](https://github.com/kaitai-io/kaitai_struct/issues/146).**
 
-# kaitai.go
+# kaitaigo
 
-kaitai.go is a compiler and runtime to create Go parsers from [Kaitai Struct](http://kaitai.io/) files.
+kaitaigo is a compiler and runtime to create Go parsers from [Kaitai Struct](http://kaitai.io/) files.
 
 ## Installation
+
 ```sh
-go get gitlab.com/dfir/binary/kaitai.go
+go get gitlab.com/dfir/binary/kaitaigo
 ```
 
 ## Usage
 
 First we need a .ksy file. We take this simple example, but there are [many more](http://formats.kaitai.io/).
 
-****
 ```yaml
 # my_format.ksy
 meta:
@@ -25,7 +25,7 @@ seq:
     size: data_size
 ```
 
-To create the Go code we use the kaitai.go command: `kaitai.go my_format.ksy`. This creates the ready to use `my_format.ksy.go`.
+To create the Go code we use the kaitaigo command: `kaitaigo my_format.ksy`. This creates the ready to use `my_format.ksy.go`.
 
 The parser can be used in other scripts like the following. With `go run main.go my_format.ksy.go` we can run the script an use our new parser.
 
@@ -51,39 +51,39 @@ func main() {
 
 ---
 
-## kaitai.go features
+## kaitaigo features
 
 ### Supported kaitai features:
 
- - Type specification
-    - meta
-        - endianess*
-    - doc
-    - seq
-    - instances
-    - enums
- - Attribute specification
-    - id
-    - doc
-    - contents
-    - repeat, repeat-expr, repeat-until
-    - if
-    - size, size-eos
-    - process
-    - terminator
-    - consume
-    - include
-    - pad
-    - eos-error
- - Primitive data types
- - Processing specification
-    - xor
-    - rol
-    - ror
-    - zlib
- - Instance specification
-    - pos
-    - value
+- Type specification
+  - meta
+    - endianess*
+  - doc
+  - seq
+  - instances
+  - enums
+- Attribute specification
+  - id
+  - doc
+  - contents
+  - repeat, repeat-expr, repeat-until
+  - if
+  - size, size-eos
+  - process
+  - terminator
+  - consume
+  - include
+  - pad
+  - eos-error
+- Primitive data types
+- Processing specification
+  - xor
+  - rol
+  - ror
+  - zlib
+- Instance specification
+  - pos
+  - value
 
 _*partially_
 
@@ -95,21 +95,20 @@ Can be used togher with `pos` the define the reference point of the position. Va
 
 ### Limitations
 
- - No _io (Most uses can be replaced with [whence](#whence))
- - Accessing nested types with `::` is not allowed
- - No fancy enums
- - No nested endianess
- - No encoding
- - No comparison of string, []byte or custom types
- - No min or max functions
- - fix type inference
- - -2 % 8 = -2
- - xor, ror, rol and zlib only work on bytes
- - float + int fails
-
+- No _io (Most uses can be replaced with [whence](#whence))
+- Accessing nested types with `::` is not allowed
+- No fancy enums
+- No nested endianess
+- No encoding
+- No comparison of string, []byte or custom types
+- No min or max functions
+- fix type inference
+- -2 % 8 = -2
+- xor, ror, rol and zlib only work on bytes
+- float + int fails
 
 ## Licenses
-The kaitai.go compiler (/cmd) is licensed as [GPLv3](licences/gpl-3.0.txt).
+
+The kaitaigo compiler (/cmd) is licensed as [GPLv3](licences/gpl-3.0.txt).
 The runtime (/runtime) is licensed under [MIT license](licences/mit.txt).
 Everything else is licensed as [GPLv3](licences/gpl-3.0.txt).
-
