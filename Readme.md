@@ -1,3 +1,5 @@
+⚠️ **This project is not activly maintained and Go support in the official [Kaitai Struct compiler](https://github.com/kaitai-io/kaitai_struct_compiler) increased. More information in the [issue for Go language support](https://github.com/kaitai-io/kaitai_struct/issues/146).**
+
 # kaitai.go
 
 kaitai.go is a compiler and runtime to create Go parsers from [Kaitai Struct](http://kaitai.io/) files.
