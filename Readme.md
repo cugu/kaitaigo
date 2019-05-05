@@ -27,7 +27,7 @@ seq:
 
 To create the Go code we use the kaitaigo command: `kaitaigo my_format.ksy`. This creates the ready to use `my_format.ksy.go`.
 
-The parser can be used in other scripts like the following. With `go run main.go my_format.ksy.go` we can run the script an use our new parser.
+The parser can be used in other scripts like the following. Change package in `my_format.ksy.go` to main. Afterward you can run the script and use our new parser with `go run main.go my_format.ksy.go`.
 
 ```go
 // main.go
