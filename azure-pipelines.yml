@@ -46,5 +46,5 @@ steps:
     ./kaitaigo `find $(modulePath)/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     make ks_tests
   workingDirectory: '$(modulePath)'
-  displayName: 'Build'
+  displayName: 'Run kaitai test suite'
   continueOnError: true
