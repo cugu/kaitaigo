@@ -1,45 +1,36 @@
 trigger:
 - master
 
+strategy:
+  matrix:
+    linux:
+      imageName: ubuntu-16.04
+    mac:
+      imageName: macos-10.13
+    windows:
+      imageName: windows-2019
+
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: $(imageName)
 
 variables:
-  GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOROOT: '/usr/local/go1.11' # Go installation path
-  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   GO111MODULE: "on"
-  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
 steps:
 - script: |
-    mkdir -p '$(GOBIN)'
-    mkdir -p '$(GOPATH)/pkg'
-    mkdir -p '$(modulePath)'
-    shopt -s extglob
-    shopt -s dotglob
-    mv !(gopath) '$(modulePath)'
-    echo '##vso[task.prependpath]$(GOBIN)'
-    echo '##vso[task.prependpath]$(GOROOT)/bin'
-  displayName: 'Set up the Go workspace'
-
-- script: |
-    go version
-    make dep
-  workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies'
-
-- script: make lint
-  workingDirectory: '$(modulePath)'
+    curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.18.0
+    go mod download
+    ./bin/golangci-lint run --enable-all -D lll --tests=false
   displayName: 'Lint'
   continueOnError: true
+  condition: eq( variables['Agent.OS'], 'Linux' )
 
-- script: make test
-  workingDirectory: '$(modulePath)'
+- script: |
+    go test -v ./... -coverprofile=coverage.out
+    go tool cover -html=coverage.out -o coverage.html
   displayName: 'Test'
 
-- script: make build
-  workingDirectory: '$(modulePath)'
+- script: go build .
   displayName: 'Build'
 
 - script: |

@@ -1,11 +1,11 @@
-# kaitaigo
+<h1 align="center">kaitaigo</h1>
 
-kaitaigo is a compiler and runtime to create Go parsers from [Kaitai Struct](http://kaitai.io/) files.
+<p align="center">kaitaigo is a compiler and runtime to create Go parsers from <a href="http://kaitai.io/">Kaitai Struct</a> files.</p>
 
-[![Build Status](https://dev.azure.com/cugu/dfir/_apis/build/status/cugu.kaitaigo?branchName=master)](https://dev.azure.com/cugu/dfir/_build/latest?definitionId=1&branchName=master)
-[![Status](https://goreportcard.com/badge/dfir.software/kaitaigo)](https://goreportcard.com/report/dfir.software/kaitaigo)
-[![Status](https://godoc.org/dfir.software/kaitaigo?status.svg)](https://godoc.org/dfir.software/kaitaigo)
-<!--[![Status](https://gitlab.com/%{project_path}/badges/master/coverage.svg)](https://gitlab.com/%{project_path}/-/jobs/artifacts/master/file/coverage.html?job=unittests)-->
+<p  align="center"><a href="https://github.com/cugu/kaitaigo"><img src="https://img.shields.io/azure-devops/build/cugu/dfir/1" alt="build" /></a>
+<a href="https://goreportcard.com/report/github.com/cugu/kaitaigo"><img src="https://goreportcard.com/badge/github.com/cugu/kaitaigo" alt="report" /></a>
+<!--<a href="https://godoc.org/github.com/cugu/kaitaigo"><img src="https://godoc.org/github.com/cugu/kaitaigo?status.svg" alt="godoc" /></a>
+<a href="https://github.com/cugu/kaitaigo"><img src="https://img.shields.io/azure-devops/coverage/cugu/dfir/1" alt="coverage" /></a>--></p>
 
 ## Installation
 
@@ -115,6 +115,6 @@ Can be used togher with `pos` the define the reference point of the position. Va
 
 ## Licenses
 
-The kaitaigo compiler (/cmd) is licensed as [GPLv3](licences/gpl-3.0.txt).
+The kaitaigo compiler is licensed as [GPLv3](licences/gpl-3.0.txt).
 The runtime (/runtime) is licensed under [MIT license](licences/mit.txt).
 Everything else is licensed as [GPLv3](licences/gpl-3.0.txt).
