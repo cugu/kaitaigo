@@ -14,12 +14,34 @@ pool:
   vmImage: $(imageName)
 
 variables:
+  CODE:   '$(system.defaultWorkingDirectory)/code'
+  GOPATH: '$(system.defaultWorkingDirectory)/gopath'
+  GOBIN:  '$(GOPATH)/bin'
   GO111MODULE: "on"
 
 steps:
-- script: go get github.com/ory/go-acc
-  displayName: 'Install go-acc Coverage'
+- bash: |
+    mkdir code
+    shopt -s extglob
+    shopt -s dotglob
+    mv !(code) code
+    go env
+    echo '##vso[task.prependpath]$(GOBIN)'
+    echo '##vso[task.prependpath]$(GOROOT)/bin'
+  displayName: 'Set up the Go workspace'
+
+- bash: GO111MODULE=off go get github.com/ory/go-acc
+  displayName: 'Setup Coverage'
   condition: eq( variables['Agent.OS'], 'Linux' )
+
+- bash: |
+    go mod download
+    go-acc ./...
+    CODECOV_TOKEN=$(CODECOV_TOKEN) bash <(curl -s https://codecov.io/bash)
+  displayName: 'Coverage'
+  continueOnError: true
+  condition: eq( variables['Agent.OS'], 'Linux' )
+  workingDirectory: '$(CODE)'
 
 - script: |
     go-acc ./...
@@ -31,11 +53,14 @@ steps:
 - script: |
     go test -v ./...
   displayName: 'Test'
+  workingDirectory: '$(CODE)'
 
 - script: go build .
   displayName: 'Build'
+  workingDirectory: '$(CODE)'
 
 - bash: |
     ./kaitaigo `find ./tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     make ks_tests
   displayName: 'Run kaitai test suite'
+  workingDirectory: '$(CODE)'
