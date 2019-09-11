@@ -34,8 +34,7 @@ steps:
   displayName: 'Build'
 
 - script: |
-    ./kaitaigo `find $(modulePath)/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+    ./kaitaigo `find ./tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     make ks_tests
-  workingDirectory: '$(modulePath)'
   displayName: 'Run kaitai test suite'
   continueOnError: true
