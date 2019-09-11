@@ -8,6 +8,7 @@ variables:
   GOBIN:  '$(GOPATH)/bin' # Go binaries path
   GOROOT: '/usr/local/go1.11' # Go installation path
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+  GO111MODULE: "on"
   modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
 
 steps:
@@ -24,7 +25,26 @@ steps:
 
 - script: |
     go version
-    go get -v -t -d ./...
-    go build -v .
+    make dep
   workingDirectory: '$(modulePath)'
-  displayName: 'Get dependencies, then build'
+  displayName: 'Get dependencies'
+
+- script: make lint
+  workingDirectory: '$(modulePath)'
+  displayName: 'Lint'
+  continueOnError: true
+
+- script: make test
+  workingDirectory: '$(modulePath)'
+  displayName: 'Test'
+
+- script: make build
+  workingDirectory: '$(modulePath)'
+  displayName: 'Build'
+
+- script: |
+    ./kaitaigo `find $(modulePath)/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+    make ks_tests
+  workingDirectory: '$(modulePath)'
+  displayName: 'Run kaitai test suite'
+  continueOnError: true

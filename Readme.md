@@ -1,13 +1,16 @@
-⚠️ **This project is not activly maintained and Go support in the official [Kaitai Struct compiler](https://github.com/kaitai-io/kaitai_struct_compiler) increased. More information in the [issue for Go language support](https://github.com/kaitai-io/kaitai_struct/issues/146).**
-
 # kaitaigo
 
 kaitaigo is a compiler and runtime to create Go parsers from [Kaitai Struct](http://kaitai.io/) files.
 
+[![Build Status](https://dev.azure.com/cugu/dfir/_apis/build/status/cugu.kaitaigo?branchName=master)](https://dev.azure.com/cugu/dfir/_build/latest?definitionId=1&branchName=master)
+[![Status](https://goreportcard.com/badge/dfir.software/kaitaigo)](https://goreportcard.com/report/dfir.software/kaitaigo)
+[![Status](https://godoc.org/dfir.software/kaitaigo?status.svg)](https://godoc.org/dfir.software/kaitaigo)
+<!--[![Status](https://gitlab.com/%{project_path}/badges/master/coverage.svg)](https://gitlab.com/%{project_path}/-/jobs/artifacts/master/file/coverage.html?job=unittests)-->
+
 ## Installation
 
 ```sh
-go get gitlab.com/dfir/binary/kaitaigo
+go get dfir.software/kaitaigo
 ```
 
 ## Usage
@@ -52,6 +55,9 @@ func main() {
 ---
 
 ## kaitaigo features
+
+This is not the official kaitai compiler. The official kaitai compiler contains go support as well.
+More information in the [issue for Go language support](https://github.com/kaitai-io/kaitai_struct/issues/146).
 
 ### Supported kaitai features:
 
