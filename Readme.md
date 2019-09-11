@@ -2,8 +2,8 @@
 
 <p align="center">kaitaigo is a compiler and runtime to create Go parsers from <a href="http://kaitai.io/">Kaitai Struct</a> files.</p>
 
-<p  align="center"><a href="https://github.com/cugu/kaitaigo"><img src="https://img.shields.io/azure-devops/build/cugu/dfir/1" alt="build" /></a>
-<a href="https://goreportcard.com/report/github.com/cugu/kaitaigo"><img src="https://goreportcard.com/badge/github.com/cugu/kaitaigo" alt="report" /></a>
+<p  align="center">
+<a href="https://github.com/cugu/kaitaigo"><img src="https://img.shields.io/azure-devops/build/cugu/dfir/1" alt="build" /></a> <a href="https://codecov.io/gh/cugu/kaitaigo"><img src="https://codecov.io/gh/cugu/kaitaigo/branch/master/graph/badge.svg" alt=coverage" /></a> <a href="https://goreportcard.com/report/github.com/cugu/kaitaigo"><img src="https://goreportcard.com/badge/github.com/cugu/kaitaigo" alt="report" /></a>
 <!--<a href="https://godoc.org/github.com/cugu/kaitaigo"><img src="https://godoc.org/github.com/cugu/kaitaigo?status.svg" alt="godoc" /></a>
 <a href="https://github.com/cugu/kaitaigo"><img src="https://img.shields.io/azure-devops/coverage/cugu/dfir/1" alt="coverage" /></a>--></p>
 
