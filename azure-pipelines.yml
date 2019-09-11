@@ -17,17 +17,19 @@ variables:
   GO111MODULE: "on"
 
 steps:
+- script: go get github.com/ory/go-acc
+  displayName: 'Install go-acc Coverage'
+  condition: eq( variables['Agent.OS'], 'Linux' )
+
 - script: |
-    curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.18.0
-    go mod download
-    ./bin/golangci-lint run --enable-all -D lll --tests=false
-  displayName: 'Lint'
+    go-acc ./...
+    bash <(curl -s https://codecov.io/bash)
+  displayName: 'Coverage'
   continueOnError: true
   condition: eq( variables['Agent.OS'], 'Linux' )
 
 - script: |
-    go test -v ./... -coverprofile=coverage.out
-    go tool cover -html=coverage.out -o coverage.html
+    go test -v ./...
   displayName: 'Test'
 
 - script: go build .
