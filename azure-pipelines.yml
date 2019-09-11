@@ -50,9 +50,9 @@ steps:
   continueOnError: true
   condition: eq( variables['Agent.OS'], 'Linux' )
 
-- script: |
-    go test -v ./...
+- script: go test -v ./...
   displayName: 'Test'
+  continueOnError: true
   workingDirectory: '$(CODE)'
 
 - script: go build .
