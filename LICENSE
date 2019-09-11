@@ -1,1 +1,3 @@
-see https://dfir.software/kaitaigo#licenses
+The kaitaigo compiler (/cmd) is licensed as [GPLv3](licences/gpl-3.0.txt).
+The runtime (/runtime) is licensed under [MIT license](licences/mit.txt).
+Everything else is licensed as [GPLv3](licences/gpl-3.0.txt).
