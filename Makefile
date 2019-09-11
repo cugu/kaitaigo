@@ -1,37 +1,19 @@
-all: clean test install generate_code ks_tests
+all: clean install generate_code ks_tests
 
 ex:
-	go install dfir.software/kaitaigo/cmd/...
+	go install .
 	kaitaigo example/my_format.ksy
 	cd example && go build . && ./example
-
-dep:
-	@printf '\nGet dependencies\n'
-	go mod download
 
 clean:
 	@printf '\nClean\n'
 	find tests -name "*.ksy.*" -type f -delete
-	goimports -w cmd/kaitaigo
+	goimports -w .
 	goimports -w runtime
-
-test:
-	go test dfir.software/kaitaigo/cmd/...
-
-lint:
-	@printf '\nLint\n'
-	go get -u gopkg.in/alecthomas/gometalinter.v2
-	gometalinter.v2 --install
-	gometalinter.v2 cmd/...
-	gometalinter.v2 runtime/...
-
-build:
-	@printf '\n\nBuild\n'
-	go build dfir.software/kaitaigo/cmd/...
 
 install:
 	@printf '\n\nInstall\n'
-	go install dfir.software/kaitaigo/cmd/...
+	go install .
 
 generate_code:
 	@printf '\n\nCode\n'
