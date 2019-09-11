@@ -7,7 +7,7 @@ stages:
 
 before_script:
   - mkdir -p /go/src/gitlab.com/dfir/binary /go/src/_/builds
-  - cp -r $CI_PROJECT_DIR /go/src/gitlab.com/dfir/binary/kaitaigo
+  - cp -r $CI_PROJECT_DIR /go/src/dfir.software/kaitaigo
   - ln -s /go/src/gitlab.com/dfir/binary /go/src/_/builds/cugu
   - make dep
 
@@ -30,5 +30,5 @@ build:
 ks_tests:
   stage: test
   script:
-    - ./kaitaigo `find /go/src/gitlab.com/dfir/binary/kaitaigo/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
+    - ./kaitaigo `find /go/src/dfir.software/kaitaigo/tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     - make ks_tests
