@@ -176,7 +176,7 @@ type Type struct {
 func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode string) {
 	var buffer LineBuffer
 
-	// defer func() { buffer.WriteLine("decoder.SetErr(err)"); goCode = buffer.String() }()
+	// defer func() { buffer.WriteLine("k.decoder.SetErr(err)"); goCode = buffer.String() }()
 	defer func() { goCode = buffer.String() }()
 
 	// init and parse element
@@ -196,7 +196,7 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 
 	if resetPos {
 		// save position
-		buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent)")
+		buffer.WriteLine("pos, _ := k.decoder.Seek(0, io.SeekCurrent)")
 	}
 
 	// read data
@@ -205,15 +205,15 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 			endian = "binary.BigEndian"
 		}
 		if attr.SizeEos != "" {
-			buffer.WriteLine("elem, err = ioutil.ReadAll(decoder)")
+			buffer.WriteLine("elem, err = ioutil.ReadAll(k.decoder)")
 		} else if terminated {
 
 			if attr.Size == "" {
-				buffer.WriteLine("elem, err = bufio.NewReader(decoder).ReadBytes(" + term + ")")
+				buffer.WriteLine("elem, err = bufio.NewReader(k.decoder).ReadBytes(" + term + ")")
 				buffer.WriteLine("if err != nil && err == io.EOF { err = nil }")
 			} else {
 				// term & size
-				buffer.WriteLine("_, err = decoder.Read(elem)")
+				buffer.WriteLine("_, err = k.decoder.Read(elem)")
 			}
 
 			// eos
@@ -226,10 +226,10 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 			buffer.WriteLine("err = nil")
 
 		} else {
-			buffer.WriteLine("err = binary.Read(decoder, " + endian + ", &elem)")
+			buffer.WriteLine("err = binary.Read(k.decoder, " + endian + ", &elem)")
 		}
 	} else {
-		buffer.WriteLine("err = elem.Decode(nil, k, k.Root())")
+		buffer.WriteLine("err = elem.Decode(k.decoder, k, k.Root())")
 	}
 
 	// pad
@@ -255,7 +255,7 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 	}
 
 	// include
-	// buffer.WriteLine("pos, _ := decoder.Seek(0, io.SeekCurrent)")
+	// buffer.WriteLine("pos, _ := k.decoder.Seek(0, io.SeekCurrent)")
 	// buffer.WriteLine("fmt.Println(pos, elem)")
 	if (terminated) && attr.Include == "" { // && attr.Size == "" {
 		buffer.WriteLine("elem = elem[:len(elem)-1]")
@@ -269,7 +269,7 @@ func (k *Type) InitElem(attr Attribute, dataType string, init bool) (goCode stri
 			buffer.WriteLine("pos -= 1")
 			buffer.WriteLine("}")
 		}
-		buffer.WriteLine("_, err = decoder.Seek(pos, io.SeekStart)")
+		buffer.WriteLine("_, err = k.decoder.Seek(pos, io.SeekStart)")
 	}
 
 	return
@@ -302,7 +302,7 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 
 	if attr.Pos != "" {
 		// save position
-		buffer.WriteLine("pos" + attr.Name() + ", _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
+		buffer.WriteLine("pos" + attr.Name() + ", _ := k.decoder.Seek(0, io.SeekCurrent) // Cannot fail")
 		whence := "io.SeekCurrent"
 		whenceMap := map[string]string{
 			"seek_set": "io.SeekStart",
@@ -313,12 +313,12 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 			whence = val
 		}
 		if whence == "io.SeekCurrent" {
-			buffer.WriteLine("decoder.Seek(0, io.SeekStart)")
+			buffer.WriteLine("k.decoder.Seek(0, io.SeekStart)")
 		}
-		buffer.WriteLine("_, err = decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
+		buffer.WriteLine("_, err = k.decoder.Seek(" + goExpr(attr.Pos, "int64") + ", " + whence + ")")
 		buffer.WriteLine("if err != nil { return }")
 		// restore position
-		defer buffer.WriteLine("decoder.Seek(pos" + attr.Name() + ", io.SeekStart)")
+		defer buffer.WriteLine("k.decoder.Seek(pos" + attr.Name() + ", io.SeekStart)")
 	}
 
 	switch {
@@ -377,8 +377,8 @@ func (k *Type) InitAttr(attr Attribute) (goCode string) {
 		// custom struct
 		// init variable
 		// if attr.Size != "" {
-		// 	buffer.WriteLine(attr.Name() + "pos, _ := decoder.Seek(0, io.SeekCurrent) // Cannot fail")
-		// 	defer buffer.WriteLine("decoder.Seek(" + attr.Name() + "pos + " + goExpr(attr.Size, "int64") + ", io.SeekStart)")
+		// 	buffer.WriteLine(attr.Name() + "pos, _ := k.decoder.Seek(0, io.SeekCurrent) // Cannot fail")
+		// 	defer buffer.WriteLine("k.decoder.Seek(" + attr.Name() + "pos + " + goExpr(attr.Size, "int64") + ", io.SeekStart)")
 		// }
 		// buffer.WriteLine("k." + attr.Name() + " = &" + attr.DataType()[1:] + "{}")
 	case attr.Type.TypeSwitch.SwitchOn != "":
@@ -449,6 +449,7 @@ func (k *Type) String(typeName string, parent string, root string) string {
 
 	// print type start
 	buffer.WriteLine("type " + typeName + " struct{")
+	buffer.WriteLine("decoder io.ReadSeeker")
 	buffer.WriteLine("parent interface{}")
 	buffer.WriteLine("root interface{}")
 
@@ -480,11 +481,11 @@ func (k *Type) String(typeName string, parent string, root string) string {
 
 	// decode function
 	buffer.WriteLine("func (k *" + typeName + ") Decode(reader io.ReadSeeker, ancestors ...interface{}) (err error) {")
-	buffer.WriteLine("if decoder == nil {")
+	buffer.WriteLine("if k.decoder == nil {")
 	buffer.WriteLine("if reader == nil {")
-	buffer.WriteLine("panic(\"Neither decoder nor reader are set.\")")
+	buffer.WriteLine("panic(\"Neither k.decoder nor reader are set.\")")
 	buffer.WriteLine("}")
-	buffer.WriteLine("decoder = reader ")
+	buffer.WriteLine("k.decoder = reader ")
 	buffer.WriteLine("}")
 
 	buffer.WriteLine("if len(ancestors) == 2 {")

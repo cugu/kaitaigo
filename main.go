@@ -86,7 +86,6 @@ func createGofile(ksyPath, pkg string, debug bool) error {
 	buffer.WriteLine("// file generated at " + time.Now().UTC().Format(time.RFC3339) + "\n")
 	buffer.WriteLine("package " + pkg)
 	buffer.WriteLine("import (\"dfir.software/kaitaigo/runtime\")")
-	buffer.WriteLine("var decoder io.ReadSeeker")
 	buffer.WriteLine(kaitai.String(baseStruct, baseStruct, baseStruct))
 
 	// format and add imports
