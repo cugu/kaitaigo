@@ -37,4 +37,3 @@ steps:
     ./kaitaigo `find ./tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
     make ks_tests
   displayName: 'Run kaitai test suite'
-  continueOnError: true
