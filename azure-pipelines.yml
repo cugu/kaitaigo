@@ -43,17 +43,14 @@ steps:
   condition: eq( variables['Agent.OS'], 'Linux' )
   workingDirectory: '$(CODE)'
 
-- script: go test -v ./...
+- script: go test -v .
   displayName: 'Test'
-  continueOnError: true
   workingDirectory: '$(CODE)'
 
 - script: go build .
   displayName: 'Build'
   workingDirectory: '$(CODE)'
 
-- bash: |
-    ./kaitaigo `find ./tests -name "*.ksy" -type f | grep -v "/enum_fancy/"`
-    make ks_tests
+- bash: make all
   displayName: 'Run kaitai test suite'
   workingDirectory: '$(CODE)'
