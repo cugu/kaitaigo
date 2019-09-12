@@ -51,6 +51,6 @@ steps:
   displayName: 'Build'
   workingDirectory: '$(CODE)'
 
-- bash: make all
+- bash: make install generate_code ks_tests
   displayName: 'Run kaitai test suite'
   workingDirectory: '$(CODE)'
