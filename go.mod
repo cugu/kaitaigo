@@ -8,5 +8,5 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/tools v0.0.0-20200911193555-6422fca01df9
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/yaml.v2 v2.3.0
 )
