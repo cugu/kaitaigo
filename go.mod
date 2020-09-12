@@ -7,6 +7,6 @@ require (
 	github.com/kr/pretty v0.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/tools v0.0.0-20190911022129-16c5e0f7d110
+	golang.org/x/tools v0.0.0-20200911193555-6422fca01df9
 	gopkg.in/yaml.v2 v2.2.2
 )
