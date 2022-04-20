@@ -1,3 +1,7 @@
+> ## This project is not maintained any more. 
+> 
+> Feel free to fork it. If you have an active fork you want to be linked here you can [contact me](https://twitter.com/jonas_plum).
+
 <h1 align="center">kaitaigo</h1>
 
 <p align="center">kaitaigo is a compiler and runtime to create Go parsers from <a href="http://kaitai.io/">Kaitai Struct</a> files.</p>
